@@ -254,4 +254,13 @@ export class DbStorage implements IStorage {
   }
 }
 
-export const storage = new DbStorage();
+import { MemoryStorage } from './memory-storage';
+
+// Use memory storage temporarily until database is properly connected
+const isValidPostgresUrl = process.env.DATABASE_URL && 
+  process.env.DATABASE_URL.startsWith('postgresql://') && 
+  !process.env.DATABASE_URL.includes('https://');
+
+export const storage = isValidPostgresUrl ? new DbStorage() : new MemoryStorage();
+
+console.log('📊 Using storage:', storage.constructor.name);
