@@ -256,9 +256,10 @@ export class DbStorage implements IStorage {
 
 import { MemoryStorage } from './memory-storage';
 
-// Use memory storage temporarily until database is properly connected
+// Check for valid PostgreSQL URL (supports both postgresql:// and postgres:// schemes)
 const isValidPostgresUrl = process.env.DATABASE_URL && 
-  process.env.DATABASE_URL.startsWith('postgresql://') && 
+  (process.env.DATABASE_URL.startsWith('postgresql://') || 
+   process.env.DATABASE_URL.startsWith('postgres://')) && 
   !process.env.DATABASE_URL.includes('https://');
 
 export const storage = isValidPostgresUrl ? new DbStorage() : new MemoryStorage();

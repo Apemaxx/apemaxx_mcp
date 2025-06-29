@@ -14,6 +14,13 @@ class AuthService {
 
   constructor() {
     this.token = localStorage.getItem('auth-token');
+    // Try to get the user data from the token if it exists
+    if (this.token) {
+      this.getCurrentUser().catch(() => {
+        // Token might be invalid, clear it
+        this.logout();
+      });
+    }
   }
 
   async login(email: string, password: string): Promise<AuthResponse> {
