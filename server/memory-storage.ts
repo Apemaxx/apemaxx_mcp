@@ -40,7 +40,17 @@ export class MemoryStorage implements IStorage {
   }
 
   async getUserByEmail(email: string): Promise<User | undefined> {
-    return this.users.find(user => user.email === email);
+    let user = this.users.find(user => user.email === email);
+    
+    // Auto-create user if not found (for demo purposes)
+    if (!user) {
+      user = await this.createUser({
+        email,
+        passwordHash: 'demo_password_hash', // Any password works in demo mode
+      });
+    }
+    
+    return user;
   }
 
   async createUser(user: InsertUser): Promise<User> {

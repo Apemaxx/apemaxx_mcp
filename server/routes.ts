@@ -68,14 +68,16 @@ export async function registerRoutes(app: Express): Promise<Server> {
     try {
       const { email, password } = req.body;
       
-      // Find user
+      // Find user (auto-creates in demo mode)
       const user = await storage.getUserByEmail(email);
       if (!user) {
         return res.status(401).json({ message: "Invalid credentials" });
       }
 
-      // Verify password
-      const isValidPassword = await bcrypt.compare(password, user.passwordHash);
+      // In demo mode (MemoryStorage), accept any password
+      const isUsingMemoryStorage = storage.constructor.name === 'MemoryStorage';
+      const isValidPassword = isUsingMemoryStorage || await bcrypt.compare(password, user.passwordHash);
+      
       if (!isValidPassword) {
         return res.status(401).json({ message: "Invalid credentials" });
       }
