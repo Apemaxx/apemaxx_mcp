@@ -1,25 +1,18 @@
 import { useState } from 'react';
-import { useQuery } from '@tanstack/react-query';
-import { useAuth } from '@/components/auth-provider';
+import { useAuth } from '@/contexts/AuthContext';
 import { Button } from '@/components/ui/button';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { User, ChevronDown, Settings, Bell, LogOut } from 'lucide-react';
 import { ProfileSettings } from '@/components/dashboard/profile-settings';
-import { Profile } from '@shared/schema';
 
 export function UserMenu() {
   const [isOpen, setIsOpen] = useState(false);
   const [showProfileModal, setShowProfileModal] = useState(false);
-  const { user, logout } = useAuth();
+  const { user, profile, loading, signOut } = useAuth();
 
-  // Fetch real profile data from Supabase
-  const { data: profile, isLoading } = useQuery<Profile>({
-    queryKey: ['/api/profile'],
-  });
-
-  const handleLogout = () => {
-    logout();
+  const handleLogout = async () => {
+    await signOut();
     setIsOpen(false);
   };
 
@@ -55,15 +48,15 @@ export function UserMenu() {
           className="flex items-center gap-3 bg-white p-2 rounded-lg shadow-sm border border-gray-200 hover:bg-gray-50"
         >
           <Avatar className="w-8 h-8">
-            <AvatarImage src={profile?.avatarUrl || ''} alt="Profile picture" />
+            <AvatarImage src={profile?.avatar_url || ''} alt="Profile picture" />
             <AvatarFallback className="bg-primary-custom text-white text-sm">
               {getInitials()}
             </AvatarFallback>
           </Avatar>
           <div className="text-left">
             <div className="text-sm font-medium text-gray-700">{getDisplayName()}</div>
-            {profile?.jobTitle && (
-              <div className="text-xs text-gray-500">{profile.jobTitle}</div>
+            {profile?.job_title && (
+              <div className="text-xs text-gray-500">{profile.job_title}</div>
             )}
           </div>
           <ChevronDown className="w-4 h-4 text-gray-400" />
