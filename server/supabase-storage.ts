@@ -375,8 +375,29 @@ export class SupabaseStorage implements IStorage {
   }
 
   async getRecentWarehouseReceipts(userId: string): Promise<WarehouseReceipt[]> {
-    // For now, return demo data
-    return [];
+    const { data, error } = await supabase
+      .from('warehouse_receipts')
+      .select('*')
+      .eq('user_id', userId)
+      .order('created_at', { ascending: false })
+      .limit(5);
+    
+    if (error) {
+      console.error('Error fetching warehouse receipts:', error);
+      return [];
+    }
+    
+    return data.map(wr => ({
+      id: wr.id,
+      receiptNumber: wr.receipt_number,
+      description: wr.description,
+      quantity: wr.quantity,
+      unit: wr.unit,
+      category: wr.category,
+      status: wr.status,
+      userId: wr.user_id,
+      createdAt: new Date(wr.created_at),
+    }));
   }
 
   async createAiInsight(insight: InsertAiInsight): Promise<AiInsight> {
