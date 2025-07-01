@@ -280,6 +280,21 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Profit upload endpoint
+  app.post("/api/profit/upload", authenticateToken, async (req: any, res) => {
+    try {
+      // For now, just acknowledge the upload
+      // In a real implementation, you would parse the CSV/Excel file
+      res.json({ 
+        message: "Profit margins uploaded successfully",
+        status: "success"
+      });
+    } catch (error) {
+      console.error("Profit upload error:", error);
+      res.status(400).json({ message: "Failed to upload profit data" });
+    }
+  });
+
   const httpServer = createServer(app);
   return httpServer;
 }

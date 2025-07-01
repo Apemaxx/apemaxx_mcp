@@ -9,7 +9,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { useToast } from "@/hooks/use-toast";
 import { apiRequest, queryClient } from "@/lib/queryClient";
 import { Profile } from "@shared/schema";
-import { User, Building, Phone, MapPin, Globe, Briefcase, Key, Save, Edit3 } from 'lucide-react';
+import { User, Building, Phone, MapPin, Globe, Briefcase, Save, Edit3 } from 'lucide-react';
 
 export function ProfileSettings() {
   const { toast } = useToast();
@@ -20,7 +20,6 @@ export function ProfileSettings() {
     company: '',
     phone: '',
     language: 'en',
-    llmApiKey: '',
     bio: '',
     location: '',
     website: '',
@@ -41,7 +40,6 @@ export function ProfileSettings() {
         company: profile.company || '',
         phone: profile.phone || '',
         language: profile.language || 'en',
-        llmApiKey: profile.llmApiKey || '',
         bio: profile.bio || '',
         location: profile.location || '',
         website: profile.website || '',
@@ -50,29 +48,32 @@ export function ProfileSettings() {
     }
   }, [profile]);
 
-  const updateProfile = useMutation({
-    mutationFn: async (data: any) => {
-      return await apiRequest('PATCH', '/api/profile', data);
-    },
+  // Update profile mutation
+  const updateProfileMutation = useMutation({
+    mutationFn: (data: any) => apiRequest('/api/profile', {
+      method: 'PATCH',
+      body: JSON.stringify(data),
+      headers: { 'Content-Type': 'application/json' },
+    }),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['/api/profile'] });
       toast({
-        title: "Profile Updated",
-        description: "Your profile settings have been saved successfully.",
+        title: "Profile updated",
+        description: "Your profile has been updated successfully",
       });
       setIsEditing(false);
+      queryClient.invalidateQueries({ queryKey: ['/api/profile'] });
     },
     onError: () => {
       toast({
-        title: "Error",
-        description: "Failed to update profile. Please try again.",
+        title: "Update failed",
+        description: "There was an error updating your profile",
         variant: "destructive",
       });
     },
   });
 
   const handleSave = () => {
-    updateProfile.mutate(formData);
+    updateProfileMutation.mutate(formData);
   };
 
   const handleCancel = () => {
@@ -83,7 +84,6 @@ export function ProfileSettings() {
         company: profile.company || '',
         phone: profile.phone || '',
         language: profile.language || 'en',
-        llmApiKey: profile.llmApiKey || '',
         bio: profile.bio || '',
         location: profile.location || '',
         website: profile.website || '',
@@ -95,264 +95,169 @@ export function ProfileSettings() {
 
   if (isLoading) {
     return (
-      <Card>
-        <CardHeader>
-          <CardTitle className="flex items-center gap-2">
-            <User className="h-5 w-5" />
-            Profile Settings
-          </CardTitle>
-        </CardHeader>
-        <CardContent>
-          <div className="text-center py-8">
-            <div className="animate-pulse">Loading profile...</div>
-          </div>
-        </CardContent>
-      </Card>
+      <div className="flex items-center justify-center p-8">
+        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary-custom"></div>
+      </div>
     );
   }
 
   return (
-    <Card>
-      <CardHeader>
-        <div className="flex items-center justify-between">
-          <div>
-            <CardTitle className="flex items-center gap-2">
-              <User className="h-5 w-5" />
-              Profile Settings
-            </CardTitle>
-            <p className="text-sm text-muted-foreground mt-1">
-              Manage your personal and company information
-            </p>
-          </div>
-          <div className="flex gap-2">
-            {isEditing ? (
-              <>
-                <Button
-                  variant="outline"
-                  size="sm"
-                  onClick={handleCancel}
-                  disabled={updateProfile.isPending}
-                >
-                  Cancel
-                </Button>
-                <Button
-                  size="sm"
-                  onClick={handleSave}
-                  disabled={updateProfile.isPending}
-                >
-                  {updateProfile.isPending ? 'Saving...' : 'Save Changes'}
-                </Button>
-              </>
-            ) : (
-              <Button
-                size="sm"
-                variant="outline"
-                onClick={() => setIsEditing(true)}
-              >
-                <Settings className="h-4 w-4 mr-2" />
-                Edit Profile
+    <div className="space-y-6">
+      {/* Header */}
+      <div className="flex items-center justify-between">
+        <div>
+          <h2 className="text-2xl font-bold text-gray-900">Profile Settings</h2>
+          <p className="text-gray-600">Manage your personal and company information</p>
+        </div>
+        <div className="flex gap-2">
+          {isEditing ? (
+            <>
+              <Button variant="outline" onClick={handleCancel}>
+                Cancel
               </Button>
-            )}
-          </div>
+              <Button 
+                onClick={handleSave}
+                disabled={updateProfileMutation.isPending}
+                className="bg-primary-custom hover:bg-primary-custom/90"
+              >
+                <Save className="w-4 h-4 mr-2" />
+                {updateProfileMutation.isPending ? 'Saving...' : 'Save Changes'}
+              </Button>
+            </>
+          ) : (
+            <Button onClick={() => setIsEditing(true)} variant="outline">
+              <Edit3 className="w-4 h-4 mr-2" />
+              Edit Profile
+            </Button>
+          )}
         </div>
-      </CardHeader>
-      <CardContent>
-        <div className="grid gap-6">
-          {/* Basic Information */}
-          <div>
-            <h4 className="font-medium mb-3 flex items-center gap-2">
-              <User className="h-4 w-4" />
-              Basic Information
-            </h4>
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              <div>
-                <Label htmlFor="name">Full Name</Label>
-                {isEditing ? (
-                  <Input
-                    id="name"
-                    value={formData.name}
-                    onChange={(e) => setFormData(prev => ({ ...prev, name: e.target.value }))}
-                    placeholder="Enter your full name"
-                  />
-                ) : (
-                  <p className="text-sm text-muted-foreground mt-1">{formData.name || 'Not set'}</p>
-                )}
-              </div>
-              <div>
-                <Label htmlFor="email">Email</Label>
-                {isEditing ? (
-                  <Input
-                    id="email"
-                    type="email"
-                    value={formData.email}
-                    onChange={(e) => setFormData(prev => ({ ...prev, email: e.target.value }))}
-                    placeholder="Enter your email"
-                  />
-                ) : (
-                  <p className="text-sm text-muted-foreground mt-1">{formData.email || 'Not set'}</p>
-                )}
-              </div>
-            </div>
-          </div>
+      </div>
 
-          {/* Company Information */}
-          <div>
-            <h4 className="font-medium mb-3 flex items-center gap-2">
-              <Briefcase className="h-4 w-4" />
-              Company Information
-            </h4>
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              <div>
-                <Label htmlFor="company">Company</Label>
-                {isEditing ? (
-                  <Input
-                    id="company"
-                    value={formData.company}
-                    onChange={(e) => setFormData(prev => ({ ...prev, company: e.target.value }))}
-                    placeholder="Enter company name"
-                  />
-                ) : (
-                  <p className="text-sm text-muted-foreground mt-1">{formData.company || 'Not set'}</p>
-                )}
-              </div>
-              <div>
-                <Label htmlFor="jobTitle">Job Title</Label>
-                {isEditing ? (
-                  <Input
-                    id="jobTitle"
-                    value={formData.jobTitle}
-                    onChange={(e) => setFormData(prev => ({ ...prev, jobTitle: e.target.value }))}
-                    placeholder="Enter your job title"
-                  />
-                ) : (
-                  <p className="text-sm text-muted-foreground mt-1">{formData.jobTitle || 'Not set'}</p>
-                )}
-              </div>
+      {/* Basic Information */}
+      <Card>
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2">
+            <User className="w-5 h-5" />
+            Basic Information
+          </CardTitle>
+        </CardHeader>
+        <CardContent className="space-y-4">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div>
+              <Label htmlFor="name">Full Name</Label>
+              <Input
+                id="name"
+                value={formData.name}
+                onChange={(e) => setFormData({ ...formData, name: e.target.value })}
+                disabled={!isEditing}
+              />
+            </div>
+            <div>
+              <Label htmlFor="email">Email</Label>
+              <Input
+                id="email"
+                type="email"
+                value={formData.email}
+                onChange={(e) => setFormData({ ...formData, email: e.target.value })}
+                disabled={!isEditing}
+              />
+            </div>
+            <div>
+              <Label htmlFor="jobTitle">Job Title</Label>
+              <Input
+                id="jobTitle"
+                value={formData.jobTitle}
+                onChange={(e) => setFormData({ ...formData, jobTitle: e.target.value })}
+                disabled={!isEditing}
+              />
+            </div>
+            <div>
+              <Label htmlFor="phone">Phone</Label>
+              <Input
+                id="phone"
+                value={formData.phone}
+                onChange={(e) => setFormData({ ...formData, phone: e.target.value })}
+                disabled={!isEditing}
+              />
             </div>
           </div>
+        </CardContent>
+      </Card>
 
-          {/* Contact Information */}
-          <div>
-            <h4 className="font-medium mb-3 flex items-center gap-2">
-              <Phone className="h-4 w-4" />
-              Contact Information
-            </h4>
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              <div>
-                <Label htmlFor="phone">Phone</Label>
-                {isEditing ? (
-                  <Input
-                    id="phone"
-                    value={formData.phone}
-                    onChange={(e) => setFormData(prev => ({ ...prev, phone: e.target.value }))}
-                    placeholder="Enter phone number"
-                  />
-                ) : (
-                  <p className="text-sm text-muted-foreground mt-1">{formData.phone || 'Not set'}</p>
-                )}
-              </div>
-              <div>
-                <Label htmlFor="location">Location</Label>
-                {isEditing ? (
-                  <Input
-                    id="location"
-                    value={formData.location}
-                    onChange={(e) => setFormData(prev => ({ ...prev, location: e.target.value }))}
-                    placeholder="Enter your location"
-                  />
-                ) : (
-                  <div className="flex items-center gap-1 mt-1">
-                    <MapPin className="h-4 w-4 text-muted-foreground" />
-                    <p className="text-sm text-muted-foreground">{formData.location || 'Not set'}</p>
-                  </div>
-                )}
-              </div>
+      {/* Company Information */}
+      <Card>
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2">
+            <Building className="w-5 h-5" />
+            Company Information
+          </CardTitle>
+        </CardHeader>
+        <CardContent className="space-y-4">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div>
+              <Label htmlFor="company">Company</Label>
+              <Input
+                id="company"
+                value={formData.company}
+                onChange={(e) => setFormData({ ...formData, company: e.target.value })}
+                disabled={!isEditing}
+              />
+            </div>
+            <div>
+              <Label htmlFor="location">Location</Label>
+              <Input
+                id="location"
+                value={formData.location}
+                onChange={(e) => setFormData({ ...formData, location: e.target.value })}
+                disabled={!isEditing}
+              />
+            </div>
+            <div>
+              <Label htmlFor="website">Website</Label>
+              <Input
+                id="website"
+                value={formData.website}
+                onChange={(e) => setFormData({ ...formData, website: e.target.value })}
+                disabled={!isEditing}
+              />
+            </div>
+            <div>
+              <Label htmlFor="language">Language</Label>
+              <Select
+                value={formData.language}
+                onValueChange={(value) => setFormData({ ...formData, language: value })}
+                disabled={!isEditing}
+              >
+                <SelectTrigger>
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="en">English</SelectItem>
+                  <SelectItem value="es">Spanish</SelectItem>
+                  <SelectItem value="pt">Portuguese</SelectItem>
+                  <SelectItem value="fr">French</SelectItem>
+                </SelectContent>
+              </Select>
             </div>
           </div>
+        </CardContent>
+      </Card>
 
-          {/* AI Configuration */}
-          <div>
-            <h4 className="font-medium mb-3 flex items-center gap-2">
-              <Key className="h-4 w-4" />
-              AI Configuration
-            </h4>
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              <div>
-                <Label htmlFor="language">Language</Label>
-                {isEditing ? (
-                  <Select value={formData.language} onValueChange={(value) => setFormData(prev => ({ ...prev, language: value }))}>
-                    <SelectTrigger>
-                      <SelectValue placeholder="Select language" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="en">English</SelectItem>
-                      <SelectItem value="es">Spanish</SelectItem>
-                      <SelectItem value="fr">French</SelectItem>
-                      <SelectItem value="de">German</SelectItem>
-                      <SelectItem value="pt">Portuguese</SelectItem>
-                    </SelectContent>
-                  </Select>
-                ) : (
-                  <p className="text-sm text-muted-foreground mt-1">{formData.language || 'English'}</p>
-                )}
-              </div>
-              <div>
-                <Label htmlFor="llmApiKey">LLM API Key</Label>
-                {isEditing ? (
-                  <Input
-                    id="llmApiKey"
-                    type="password"
-                    value={formData.llmApiKey}
-                    onChange={(e) => setFormData(prev => ({ ...prev, llmApiKey: e.target.value }))}
-                    placeholder="Enter API key for AI providers"
-                  />
-                ) : (
-                  <p className="text-sm text-muted-foreground mt-1">
-                    {formData.llmApiKey ? '••••••••••••••••' : 'Not configured'}
-                  </p>
-                )}
-              </div>
-            </div>
-          </div>
-
-          {/* Additional Information */}
-          <div>
-            <h4 className="font-medium mb-3 flex items-center gap-2">
-              <Globe className="h-4 w-4" />
-              Additional Information
-            </h4>
-            <div className="grid grid-cols-1 gap-4">
-              <div>
-                <Label htmlFor="website">Website</Label>
-                {isEditing ? (
-                  <Input
-                    id="website"
-                    value={formData.website}
-                    onChange={(e) => setFormData(prev => ({ ...prev, website: e.target.value }))}
-                    placeholder="Enter website URL"
-                  />
-                ) : (
-                  <p className="text-sm text-muted-foreground mt-1">{formData.website || 'Not set'}</p>
-                )}
-              </div>
-              <div>
-                <Label htmlFor="bio">Bio</Label>
-                {isEditing ? (
-                  <Textarea
-                    id="bio"
-                    value={formData.bio}
-                    onChange={(e) => setFormData(prev => ({ ...prev, bio: e.target.value }))}
-                    placeholder="Tell us about yourself"
-                    rows={3}
-                  />
-                ) : (
-                  <p className="text-sm text-muted-foreground mt-1">{formData.bio || 'Not set'}</p>
-                )}
-              </div>
-            </div>
-          </div>
-        </div>
-      </CardContent>
-    </Card>
+      {/* Additional Information */}
+      <Card>
+        <CardHeader>
+          <CardTitle>Bio</CardTitle>
+        </CardHeader>
+        <CardContent>
+          <Textarea
+            value={formData.bio}
+            onChange={(e) => setFormData({ ...formData, bio: e.target.value })}
+            disabled={!isEditing}
+            placeholder="Tell us about yourself..."
+            rows={3}
+          />
+        </CardContent>
+      </Card>
+    </div>
   );
 }
