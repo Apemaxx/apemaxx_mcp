@@ -3,6 +3,7 @@ import { createServer, type Server } from "http";
 import bcrypt from "bcryptjs";
 import jwt from "jsonwebtoken";
 import { storage } from "./storage";
+import { supabase } from "./supabase";
 import { insertUserSchema, insertBookingSchema, insertChatMessageSchema, insertProfileSchema } from "@shared/schema";
 import { z } from "zod";
 
@@ -40,26 +41,26 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(400).json({ message: "Email and password are required" });
       }
       
-      // Check if user already exists
-      const existingUser = await storage.getUserByEmail(email);
-      if (existingUser) {
-        return res.status(400).json({ message: "User already exists" });
-      }
-
-      // Hash password
-      const hashedPassword = await bcrypt.hash(password, 10);
-      
-      // Create user
-      const user = await storage.createUser({
+      // Use Supabase Auth for registration
+      const { data, error } = await supabase.auth.signUp({
         email,
-        passwordHash: hashedPassword,
+        password,
       });
 
-      // Generate JWT
-      const token = jwt.sign({ userId: user.id }, JWT_SECRET, { expiresIn: '24h' });
+      if (error) {
+        console.error("Supabase registration error:", error);
+        return res.status(400).json({ message: error.message });
+      }
+
+      if (!data.user) {
+        return res.status(400).json({ message: "Registration failed" });
+      }
+
+      // Generate JWT for our app
+      const token = jwt.sign({ userId: data.user.id }, JWT_SECRET, { expiresIn: '24h' });
 
       res.json({
-        user: { id: user.id, email: user.email },
+        user: { id: data.user.id, email: data.user.email },
         token,
       });
     } catch (error) {
@@ -72,25 +73,22 @@ export async function registerRoutes(app: Express): Promise<Server> {
     try {
       const { email, password } = req.body;
       
-      // Find user (auto-creates in demo mode)
-      const user = await storage.getUserByEmail(email);
-      if (!user) {
+      // Use Supabase Auth for authentication
+      const { data, error } = await supabase.auth.signInWithPassword({
+        email,
+        password,
+      });
+
+      if (error || !data.user) {
+        console.error("Supabase login error:", error?.message);
         return res.status(401).json({ message: "Invalid credentials" });
       }
 
-      // In demo mode (MemoryStorage), accept any password
-      const isUsingMemoryStorage = storage.constructor.name === 'MemoryStorage';
-      const isValidPassword = isUsingMemoryStorage || await bcrypt.compare(password, user.passwordHash);
-      
-      if (!isValidPassword) {
-        return res.status(401).json({ message: "Invalid credentials" });
-      }
-
-      // Generate JWT
-      const token = jwt.sign({ userId: user.id }, JWT_SECRET, { expiresIn: '24h' });
+      // Generate JWT for our app
+      const token = jwt.sign({ userId: data.user.id }, JWT_SECRET, { expiresIn: '24h' });
 
       res.json({
-        user: { id: user.id, email: user.email },
+        user: { id: data.user.id, email: data.user.email },
         token,
       });
     } catch (error) {
