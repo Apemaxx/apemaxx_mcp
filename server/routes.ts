@@ -3,7 +3,7 @@ import { createServer, type Server } from "http";
 import bcrypt from "bcryptjs";
 import jwt from "jsonwebtoken";
 import { storage } from "./storage";
-import { insertUserSchema, insertBookingSchema, insertChatMessageSchema } from "@shared/schema";
+import { insertUserSchema, insertBookingSchema, insertChatMessageSchema, insertProfileSchema } from "@shared/schema";
 import { z } from "zod";
 
 const JWT_SECRET = process.env.JWT_SECRET || "fallback-secret-key";
@@ -96,9 +96,54 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   app.get("/api/auth/me", authenticateToken, async (req: any, res) => {
-    res.json({
-      user: { id: req.user.id, email: req.user.email },
-    });
+    try {
+      const profile = await storage.getProfile(req.user.id);
+      res.json({
+        user: { 
+          id: req.user.id, 
+          email: req.user.email,
+          profile: profile || null
+        },
+      });
+    } catch (error) {
+      console.error("Get profile error:", error);
+      res.json({
+        user: { id: req.user.id, email: req.user.email, profile: null },
+      });
+    }
+  });
+
+  // Profile routes
+  app.get("/api/profile", authenticateToken, async (req: any, res) => {
+    try {
+      const profile = await storage.getProfile(req.user.id);
+      res.json(profile || null);
+    } catch (error) {
+      console.error("Profile error:", error);
+      res.status(500).json({ message: "Failed to fetch profile" });
+    }
+  });
+
+  app.post("/api/profile", authenticateToken, async (req: any, res) => {
+    try {
+      const profileData = insertProfileSchema.parse({ ...req.body, userId: req.user.id });
+      const profile = await storage.createProfile(profileData);
+      res.json(profile);
+    } catch (error) {
+      console.error("Create profile error:", error);
+      res.status(500).json({ message: "Failed to create profile" });
+    }
+  });
+
+  app.put("/api/profile", authenticateToken, async (req: any, res) => {
+    try {
+      const profileData = insertProfileSchema.partial().parse(req.body);
+      const profile = await storage.updateProfile(req.user.id, profileData);
+      res.json(profile);
+    } catch (error) {
+      console.error("Update profile error:", error);
+      res.status(500).json({ message: "Failed to update profile" });
+    }
   });
 
   // Dashboard data routes

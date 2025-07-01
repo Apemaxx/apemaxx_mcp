@@ -9,6 +9,20 @@ export const users = pgTable("users", {
   createdAt: timestamp("created_at").defaultNow().notNull(),
 });
 
+export const profiles = pgTable("profiles", {
+  id: uuid("id").primaryKey().defaultRandom(),
+  userId: uuid("user_id").references(() => users.id).notNull(),
+  firstName: text("first_name"),
+  lastName: text("last_name"),
+  avatarUrl: text("avatar_url"),
+  bio: text("bio"),
+  location: text("location"),
+  website: text("website"),
+  jobTitle: text("job_title"),
+  organizationId: uuid("organization_id"),
+  updatedAt: timestamp("updated_at").defaultNow().notNull(),
+});
+
 export const shipments = pgTable("shipments", {
   id: serial("id").primaryKey(),
   trackingNumber: text("tracking_number").notNull().unique(),
@@ -133,9 +147,16 @@ export const insertChatMessageSchema = createInsertSchema(chatMessages).omit({
   createdAt: true,
 });
 
+export const insertProfileSchema = createInsertSchema(profiles).omit({
+  id: true,
+  updatedAt: true,
+});
+
 // Types
 export type User = typeof users.$inferSelect;
 export type InsertUser = z.infer<typeof insertUserSchema>;
+export type Profile = typeof profiles.$inferSelect;
+export type InsertProfile = z.infer<typeof insertProfileSchema>;
 export type Shipment = typeof shipments.$inferSelect;
 export type InsertShipment = z.infer<typeof insertShipmentSchema>;
 export type Booking = typeof bookings.$inferSelect;

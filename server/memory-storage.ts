@@ -2,6 +2,8 @@ import type { IStorage } from './storage';
 import type {
   User,
   InsertUser,
+  Profile,
+  InsertProfile,
   Shipment,
   InsertShipment,
   Booking,
@@ -20,6 +22,7 @@ import type {
 
 export class MemoryStorage implements IStorage {
   private users: User[] = [];
+  private profiles: Profile[] = [];
   private shipments: Shipment[] = [];
   private bookings: Booking[] = [];
   private consolidations: Consolidation[] = [];
@@ -33,6 +36,7 @@ export class MemoryStorage implements IStorage {
 
   constructor() {
     this.initializeSampleData();
+    this.initializeSampleProfiles();
   }
 
   async getUser(id: string): Promise<User | undefined> {
@@ -63,6 +67,47 @@ export class MemoryStorage implements IStorage {
     this.users.push(newUser);
     this.nextUserId = `user_${this.users.length + 1}`;
     return newUser;
+  }
+
+  async getProfile(userId: string): Promise<Profile | undefined> {
+    return this.profiles.find(profile => profile.userId === userId);
+  }
+
+  async createProfile(profile: InsertProfile): Promise<Profile> {
+    const newProfile: Profile = {
+      id: `profile_${this.profiles.length + 1}`,
+      userId: profile.userId,
+      firstName: profile.firstName || null,
+      lastName: profile.lastName || null,
+      avatarUrl: profile.avatarUrl || null,
+      bio: profile.bio || null,
+      location: profile.location || null,
+      website: profile.website || null,
+      jobTitle: profile.jobTitle || null,
+      organizationId: profile.organizationId || null,
+      updatedAt: new Date(),
+    };
+    this.profiles.push(newProfile);
+    return newProfile;
+  }
+
+  async updateProfile(userId: string, profile: Partial<InsertProfile>): Promise<Profile> {
+    const existingProfileIndex = this.profiles.findIndex(p => p.userId === userId);
+    
+    if (existingProfileIndex === -1) {
+      // Create new profile if none exists
+      return this.createProfile({ userId, ...profile });
+    }
+
+    const existingProfile = this.profiles[existingProfileIndex];
+    const updatedProfile: Profile = {
+      ...existingProfile,
+      ...profile,
+      updatedAt: new Date(),
+    };
+    
+    this.profiles[existingProfileIndex] = updatedProfile;
+    return updatedProfile;
   }
 
   async getKPIMetrics(userId: string): Promise<{
@@ -413,5 +458,23 @@ export class MemoryStorage implements IStorage {
     this.trackingEvents.push(...sampleTrackingEvents);
 
     this.nextId = 100; // Start IDs from 100 to avoid conflicts
+  }
+
+  private initializeSampleProfiles() {
+    // Create sample profile for default user
+    const sampleProfile: Profile = {
+      id: 'profile_1',
+      userId: 'user_1',
+      firstName: 'Ricardo',
+      lastName: 'Lopes',
+      avatarUrl: 'https://images.unsplash.com/photo-1472099645785-5658abf4ff4e?w=150&h=150&fit=crop&crop=face',
+      bio: 'Experienced logistics manager with 8+ years in international freight and supply chain optimization.',
+      location: 'Miami, FL',
+      website: null,
+      jobTitle: 'Senior Logistics Manager',
+      organizationId: null,
+      updatedAt: new Date(),
+    };
+    this.profiles.push(sampleProfile);
   }
 }

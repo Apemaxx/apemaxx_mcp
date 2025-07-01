@@ -3,6 +3,7 @@ import { Pool } from "pg";
 import { eq, and, sql, desc, count } from "drizzle-orm";
 import {
   users,
+  profiles,
   shipments,
   bookings,
   consolidations,
@@ -12,6 +13,8 @@ import {
   chatMessages,
   type User,
   type InsertUser,
+  type Profile,
+  type InsertProfile,
   type Shipment,
   type InsertShipment,
   type Booking,
@@ -43,6 +46,11 @@ export interface IStorage {
   getUser(id: string): Promise<User | undefined>;
   getUserByEmail(email: string): Promise<User | undefined>;
   createUser(user: InsertUser): Promise<User>;
+
+  // Profile management
+  getProfile(userId: string): Promise<Profile | undefined>;
+  createProfile(profile: InsertProfile): Promise<Profile>;
+  updateProfile(userId: string, profile: Partial<InsertProfile>): Promise<Profile>;
 
   // KPI Metrics
   getKPIMetrics(userId: string): Promise<{
@@ -193,6 +201,24 @@ export class DbStorage implements IStorage {
 
   async createUser(user: InsertUser): Promise<User> {
     const result = await db.insert(users).values(user).returning();
+    return result[0];
+  }
+
+  async getProfile(userId: string): Promise<Profile | undefined> {
+    const result = await db.select().from(profiles).where(eq(profiles.userId, userId)).limit(1);
+    return result[0];
+  }
+
+  async createProfile(profile: InsertProfile): Promise<Profile> {
+    const result = await db.insert(profiles).values(profile).returning();
+    return result[0];
+  }
+
+  async updateProfile(userId: string, profile: Partial<InsertProfile>): Promise<Profile> {
+    const result = await db.update(profiles)
+      .set({ ...profile, updatedAt: new Date() })
+      .where(eq(profiles.userId, userId))
+      .returning();
     return result[0];
   }
 
