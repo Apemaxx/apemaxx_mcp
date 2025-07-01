@@ -82,6 +82,105 @@ export interface IStorage {
 }
 
 export class DbStorage implements IStorage {
+  constructor() {
+    // Ensure tables exist when DbStorage is instantiated
+    this.initializeTables();
+  }
+
+  private async initializeTables() {
+    try {
+      await db.execute(sql`
+        CREATE TABLE IF NOT EXISTS users (
+          id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+          email TEXT NOT NULL UNIQUE,
+          password_hash TEXT NOT NULL,
+          created_at TIMESTAMP DEFAULT NOW() NOT NULL
+        );
+        
+        CREATE TABLE IF NOT EXISTS shipments (
+          id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+          user_id TEXT NOT NULL,
+          tracking_number TEXT NOT NULL,
+          carrier TEXT NOT NULL,
+          status TEXT NOT NULL,
+          origin TEXT NOT NULL,
+          destination TEXT NOT NULL,
+          created_at TIMESTAMP DEFAULT NOW() NOT NULL
+        );
+        
+        CREATE TABLE IF NOT EXISTS bookings (
+          id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+          user_id TEXT NOT NULL,
+          booking_reference TEXT NOT NULL,
+          service_type TEXT NOT NULL,
+          origin TEXT NOT NULL,
+          destination TEXT NOT NULL,
+          status TEXT NOT NULL,
+          created_at TIMESTAMP DEFAULT NOW() NOT NULL
+        );
+        
+        CREATE TABLE IF NOT EXISTS consolidations (
+          id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+          user_id TEXT NOT NULL,
+          plan_name TEXT NOT NULL,
+          route TEXT NOT NULL,
+          current_volume TEXT NOT NULL,
+          max_volume TEXT NOT NULL,
+          booking_count INTEGER NOT NULL,
+          etd TEXT NOT NULL,
+          status TEXT NOT NULL,
+          created_at TIMESTAMP DEFAULT NOW() NOT NULL
+        );
+        
+        CREATE TABLE IF NOT EXISTS warehouse_receipts (
+          id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+          user_id TEXT NOT NULL,
+          receipt_number TEXT NOT NULL,
+          description TEXT NOT NULL,
+          quantity INTEGER NOT NULL,
+          unit TEXT NOT NULL,
+          category TEXT NOT NULL,
+          status TEXT NOT NULL,
+          created_at TIMESTAMP DEFAULT NOW() NOT NULL
+        );
+        
+        CREATE TABLE IF NOT EXISTS ai_insights (
+          id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+          user_id TEXT NOT NULL,
+          type TEXT NOT NULL,
+          title TEXT NOT NULL,
+          message TEXT NOT NULL,
+          action_url TEXT,
+          action_text TEXT,
+          is_read BOOLEAN DEFAULT FALSE,
+          created_at TIMESTAMP DEFAULT NOW() NOT NULL
+        );
+        
+        CREATE TABLE IF NOT EXISTS tracking_events (
+          id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+          user_id TEXT NOT NULL,
+          shipment_id UUID NOT NULL,
+          event_type TEXT NOT NULL,
+          location TEXT NOT NULL,
+          description TEXT NOT NULL,
+          timestamp TIMESTAMP NOT NULL,
+          created_at TIMESTAMP DEFAULT NOW() NOT NULL
+        );
+        
+        CREATE TABLE IF NOT EXISTS chat_messages (
+          id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+          user_id TEXT NOT NULL,
+          message TEXT NOT NULL,
+          is_from_user BOOLEAN NOT NULL,
+          created_at TIMESTAMP DEFAULT NOW() NOT NULL
+        );
+      `);
+      console.log('✅ Database tables initialized successfully');
+    } catch (error) {
+      console.log('⚠️ Table initialization error:', error instanceof Error ? error.message : String(error));
+    }
+  }
+
   async getUser(id: string): Promise<User | undefined> {
     const result = await db.select().from(users).where(eq(users.id, id)).limit(1);
     return result[0];
@@ -274,7 +373,7 @@ try {
     storage = new MemoryStorage();
   }
 } catch (error) {
-  console.log('❌ Database connection failed, falling back to MemoryStorage:', error.message);
+  console.log('❌ Database connection failed, falling back to MemoryStorage:', error instanceof Error ? error.message : String(error));
   storage = new MemoryStorage();
 }
 
