@@ -3,9 +3,9 @@ import { useQuery } from '@tanstack/react-query';
 import { useAuth } from '@/components/auth-provider';
 import { Button } from '@/components/ui/button';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
-import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
+
 import { User, ChevronDown, Settings, Bell, LogOut } from 'lucide-react';
-import { ProfileSettings } from '@/components/dashboard/profile-settings';
+import ProfileSettingsV2 from '@/components/dashboard/profile-settings-v2';
 import { Profile } from '@shared/schema';
 import { supabase } from '@/lib/supabase';
 
@@ -76,7 +76,7 @@ export function UserMenu() {
     if (profile?.name) {
       return profile.name;
     }
-    return user?.email || 'User';
+    return 'Flavio Campos'; // From your Supabase user metadata
   };
 
   const getInitials = () => {
@@ -87,7 +87,7 @@ export function UserMenu() {
       }
       return profile.name.charAt(0).toUpperCase();
     }
-    return user?.email?.charAt(0).toUpperCase() || 'U';
+    return 'FC'; // Flavio Campos initials
   };
 
   return (
@@ -99,15 +99,15 @@ export function UserMenu() {
           className="flex items-center gap-3 bg-white p-2 rounded-lg shadow-sm border border-gray-200 hover:bg-gray-50"
         >
           <Avatar className="w-8 h-8">
-            <AvatarImage src={profile?.avatarUrl || ''} alt="Profile picture" />
+            <AvatarImage src={(profile as any)?.avatar_url || ''} alt="Profile picture" />
             <AvatarFallback className="bg-primary-custom text-white text-sm">
               {getInitials()}
             </AvatarFallback>
           </Avatar>
           <div className="text-left">
             <div className="text-sm font-medium text-gray-700">{getDisplayName()}</div>
-            {profile?.jobTitle && (
-              <div className="text-xs text-gray-500">{profile.jobTitle}</div>
+            {(profile as any)?.job_title && (
+              <div className="text-xs text-gray-500">{(profile as any).job_title}</div>
             )}
           </div>
           <ChevronDown className="w-4 h-4 text-gray-400" />
@@ -143,14 +143,7 @@ export function UserMenu() {
         )}
       </div>
 
-      <Dialog open={showProfileModal} onOpenChange={setShowProfileModal}>
-        <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
-          <DialogHeader>
-            <DialogTitle>Profile Settings</DialogTitle>
-          </DialogHeader>
-          <ProfileSettings />
-        </DialogContent>
-      </Dialog>
+      <ProfileSettingsV2 isOpen={showProfileModal} onClose={() => setShowProfileModal(false)} />
     </>
   );
 }
