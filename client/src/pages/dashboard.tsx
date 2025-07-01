@@ -6,10 +6,31 @@ import { AIInsights } from '@/components/dashboard/ai-insights';
 import { ChatInterface } from '@/components/dashboard/chat-interface';
 import { LiveTracking } from '@/components/dashboard/live-tracking';
 import { WarehouseReceipts } from '@/components/dashboard/warehouse-receipts';
+import { Link } from 'wouter';
+import { Button } from '@/components/ui/button';
+import { Package, BarChart3, Home } from 'lucide-react';
 
 export default function Dashboard() {
   return (
     <div className="p-4 md:p-8">
+      {/* Navigation Bar */}
+      <nav className="mb-6 border-b border-gray-200 dark:border-gray-700">
+        <div className="flex items-center gap-6">
+          <Link href="/">
+            <Button variant="ghost" className="gap-2">
+              <Home className="h-4 w-4" />
+              Dashboard
+            </Button>
+          </Link>
+          <Link href="/warehouse">
+            <Button variant="ghost" className="gap-2">
+              <Package className="h-4 w-4" />
+              Warehouse Management
+            </Button>
+          </Link>
+        </div>
+      </nav>
+
       {/* Header with User Menu */}
       <header className="mb-8 flex justify-between items-start">
         <div>
