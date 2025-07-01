@@ -70,7 +70,7 @@ export default function ProfileSettingsV2({ isOpen, onClose }: ProfileSettingsV2
   });
 
   // Load profile data using React Query
-  const { data: profile, isLoading } = useQuery<ProfileData>({
+  const { data: profileData, isLoading } = useQuery<ProfileData>({
     queryKey: ['/api/profile'],
     enabled: isOpen && !!user?.id,
   });
