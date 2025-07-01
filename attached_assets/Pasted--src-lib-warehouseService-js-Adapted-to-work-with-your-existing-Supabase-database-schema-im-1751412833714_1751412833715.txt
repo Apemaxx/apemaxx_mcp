@@ -1,0 +1,201 @@
+// src/lib/warehouseService.js
+// Adapted to work with your existing Supabase database schema
+
+import { supabase } from './supabase'; // Your existing Supabase client
+
+export const warehouseService = {
+  // Get warehouse receipts using the new summary view
+  async getReceipts(userId, limit = 10) {
+    const { data, error } = await supabase
+      .from('warehouse_receipt_summary')
+      .select('*')
+      .eq('user_id', userId)
+      .order('received_date', { ascending: false })
+      .limit(limit);
+    
+    if (error) throw error;
+    return data;
+  },
+
+  // Get single receipt with attachments
+  async getReceiptById(receiptId) {
+    const { data: receipt, error: receiptError } = await supabase
+      .from('warehouse_receipts')
+      .select('*')
+      .eq('id', receiptId)
+      .single();
+
+    if (receiptError) throw receiptError;
+
+    // Get attachments
+    const { data: attachments, error: attachError } = await supabase
+      .from('warehouse_receipt_attachments')
+      .select('*')
+      .eq('warehouse_receipt_id', receiptId);
+
+    if (attachError) throw attachError;
+
+    return { ...receipt, attachments };
+  },
+
+  // Create new warehouse receipt
+  async createReceipt(receiptData, files = []) {
+    try {
+      // Generate unique receipt number
+      const receiptNumber = `WR${Date.now()}`;
+      
+      // Prepare data for insertion (match your table structure)
+      const insertData = {
+        wr_number: receiptNumber,
+        received_date: new Date().toISOString(),
+        received_by: receiptData.received_by,
+        shipper_name: receiptData.shipper_name,
+        shipper_address: receiptData.shipper_address,
+        consignee_name: receiptData.consignee_name,
+        consignee_address: receiptData.consignee_address,
+        carrier_name: receiptData.carrier_name,
+        driver_name: receiptData.driver_name,
+        tracking_number: receiptData.tracking_number,
+        total_pieces: receiptData.total_pieces,
+        total_weight_lb: receiptData.total_weight_lbs, // Note: your DB uses total_weight_lb
+        cargo_description: receiptData.cargo_description || 'GENERAL CARGO',
+        warehouse_location: receiptData.warehouse_location,
+        notes: receiptData.notes,
+        user_id: receiptData.user_id,
+        status: 'received'
+      };
+
+      // Create receipt record
+      const { data: receipt, error } = await supabase
+        .from('warehouse_receipts')
+        .insert([insertData])
+        .select()
+        .single();
+
+      if (error) throw error;
+
+      // Upload files if provided
+      if (files.length > 0) {
+        await this.uploadFiles(files, receipt.id);
+      }
+
+      return receipt;
+    } catch (error) {
+      console.error('Error creating receipt:', error);
+      throw error;
+    }
+  },
+
+  // Upload files to Supabase Storage
+  async uploadFiles(files, receiptId) {
+    const uploadPromises = Array.from(files).map(async (file) => {
+      const fileExt = file.name.split('.').pop();
+      const fileName = `${receiptId}/${Date.now()}.${fileExt}`;
+      
+      // Upload to storage
+      const { data: uploadData, error: uploadError } = await supabase.storage
+        .from('warehouse-receipts')
+        .upload(fileName, file);
+
+      if (uploadError) throw uploadError;
+
+      // Get public URL
+      const { data: { publicUrl } } = supabase.storage
+        .from('warehouse-receipts')
+        .getPublicUrl(fileName);
+
+      // Save attachment record
+      const { data: attachment, error: attachError } = await supabase
+        .from('warehouse_receipt_attachments')
+        .insert([{
+          warehouse_receipt_id: receiptId,
+          file_name: file.name,
+          file_path: uploadData.path,
+          file_type: fileExt,
+          file_size: file.size,
+          mime_type: file.type,
+          uploaded_by: (await supabase.auth.getUser()).data.user?.id
+        }])
+        .select()
+        .single();
+
+      if (attachError) throw attachError;
+
+      return {
+        ...attachment,
+        url: publicUrl
+      };
+    });
+
+    return Promise.all(uploadPromises);
+  },
+
+  // Get dashboard analytics using new function
+  async getDashboardStats(userId) {
+    const { data, error } = await supabase
+      .rpc('get_warehouse_analytics', { user_uuid: userId });
+
+    if (error) throw error;
+    return data;
+  },
+
+  // Update receipt status
+  async updateStatus(receiptId, status, notes = '') {
+    const { data, error } = await supabase
+      .from('warehouse_receipts')
+      .update({ 
+        status,
+        notes: notes || undefined,
+        updated_at: new Date().toISOString()
+      })
+      .eq('id', receiptId)
+      .select()
+      .single();
+
+    if (error) throw error;
+    return data;
+  },
+
+  // Link receipt to booking
+  async linkToBooking(receiptId, bookingId, bookingType = 'lcl_booking') {
+    const { data, error } = await supabase
+      .from('warehouse_receipt_bookings')
+      .insert([{
+        warehouse_receipt_id: receiptId,
+        booking_id: bookingId,
+        booking_type: bookingType,
+        linked_by: (await supabase.auth.getUser()).data.user?.id
+      }])
+      .select()
+      .single();
+
+    if (error) throw error;
+    return data;
+  },
+
+  // Search receipts
+  async searchReceipts(userId, searchTerm) {
+    const { data, error } = await supabase
+      .from('warehouse_receipt_summary')
+      .select('*')
+      .eq('user_id', userId)
+      .or(`receipt_number.ilike.%${searchTerm}%,tracking_number.ilike.%${searchTerm}%,shipper_name.ilike.%${searchTerm}%,carrier_name.ilike.%${searchTerm}%`)
+      .order('received_date', { ascending: false });
+    
+    if (error) throw error;
+    return data;
+  },
+
+  // Get receipts by status
+  async getReceiptsByStatus(userId, status) {
+    const { data, error } = await supabase
+      .from('warehouse_receipt_summary')
+      .select('*')
+      .eq('user_id', userId)
+      .eq('status', status)
+      .order('received_date', { ascending: false });
+    
+    if (error) throw error;
+    return data;
+  }
+};
