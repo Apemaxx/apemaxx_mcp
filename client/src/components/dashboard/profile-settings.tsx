@@ -9,7 +9,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { useToast } from "@/hooks/use-toast";
 import { apiRequest, queryClient } from "@/lib/queryClient";
 import { Profile } from "@shared/schema";
-import { User, Settings, Phone, MapPin, Globe, Briefcase, Key } from 'lucide-react';
+import { User, Building, Phone, MapPin, Globe, Briefcase, Key, Save, Edit3 } from 'lucide-react';
 
 export function ProfileSettings() {
   const { toast } = useToast();
