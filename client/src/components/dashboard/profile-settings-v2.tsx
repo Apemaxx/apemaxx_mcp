@@ -1,11 +1,9 @@
 import { useState, useEffect } from 'react';
-import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '../ui/dialog';
 import { Button } from '../ui/button';
 import { Input } from '../ui/input';
 import { Label } from '../ui/label';
 import { useAuth } from '../auth-provider';
-import { apiRequest } from '../../lib/api';
 import { useToast } from '../../hooks/use-toast';
 import { X, Upload } from 'lucide-react';
 import { supabase } from '../../lib/supabase';
@@ -36,62 +34,113 @@ interface ProfileData {
 export default function ProfileSettingsV2({ isOpen, onClose }: ProfileSettingsV2Props) {
   const { user } = useAuth();
   const { toast } = useToast();
-  const queryClient = useQueryClient();
   const [uploading, setUploading] = useState(false);
+  const [profileData, setProfileData] = useState<ProfileData | null>(null);
+  const [isLoading, setIsLoading] = useState(false);
 
-  // Load profile data using React Query
-  const { data: profileData, isLoading } = useQuery<ProfileData>({
-    queryKey: ['/api/profile'],
-    enabled: isOpen && !!user?.id,
-  });
-
-  // Initialize form data with profile data or empty values
+  // Initialize form data
   const [formData, setFormData] = useState({
-    name: profileData?.name || '',
-    email: profileData?.email || '',
-    company: profileData?.company || '',
-    phone: profileData?.phone || '',
-    bio: profileData?.bio || '',
-    location: profileData?.location || '',
-    website: profileData?.website || '',
-    job_title: profileData?.job_title || '',
-    avatar_url: profileData?.avatar_url || '',
+    name: '',
+    email: '',
+    company: '',
+    phone: '',
+    bio: '',
+    location: '',
+    website: '',
+    job_title: '',
+    avatar_url: '',
   });
 
-  // Update profile mutation
-  const updateProfileMutation = useMutation({
-    mutationFn: async (profileData: any) => {
-      const response = await fetch('/api/profile', {
-        method: 'PUT',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${localStorage.getItem('token')}`,
-        },
-        body: JSON.stringify(profileData),
-      });
+  // Fetch profile data directly from Supabase
+  const fetchProfile = async () => {
+    if (!user?.id) return;
+    
+    try {
+      setIsLoading(true);
+      console.log('🔍 ProfileSettings - Fetching profile for user:', user.id);
       
-      if (!response.ok) {
-        throw new Error('Failed to update profile');
+      const { data, error } = await supabase
+        .from('profiles')
+        .select('*')
+        .eq('id', user.id)
+        .single();
+
+      if (error) {
+        console.error('❌ ProfileSettings - Profile fetch error:', error);
+        return;
       }
+
+      console.log('✅ ProfileSettings - Profile data fetched:', data);
+      setProfileData(data);
       
-      return response.json();
-    },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['/api/profile'] });
+      // Update form data with fetched profile
+      setFormData({
+        name: data?.name || '',
+        email: data?.email || '',
+        company: data?.company || '',
+        phone: data?.phone || '',
+        bio: data?.bio || '',
+        location: data?.location || '',
+        website: data?.website || '',
+        job_title: data?.job_title || '',
+        avatar_url: data?.avatar_url || '',
+      });
+    } catch (error) {
+      console.error('❌ ProfileSettings - Profile fetch exception:', error);
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  // Update profile function using direct Supabase
+  const updateProfile = async (profileData: any) => {
+    if (!user?.id) return;
+    
+    try {
+      setIsLoading(true);
+      console.log('🔄 ProfileSettings - Updating profile:', profileData);
+      
+      const { data, error } = await supabase
+        .from('profiles')
+        .update({
+          ...profileData,
+          updated_at: new Date().toISOString(),
+        })
+        .eq('id', user.id)
+        .select()
+        .single();
+
+      if (error) {
+        console.error('❌ ProfileSettings - Update error:', error);
+        throw error;
+      }
+
+      console.log('✅ ProfileSettings - Profile updated:', data);
+      setProfileData(data);
+      
       toast({
         title: "Profile updated",
         description: "Your profile has been updated successfully.",
       });
       onClose();
-    },
-    onError: (error: any) => {
+    } catch (error: any) {
+      console.error('❌ ProfileSettings - Update exception:', error);
       toast({
         title: "Error",
         description: error.message || "Failed to update profile",
         variant: "destructive",
       });
-    },
-  });
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  // Fetch profile data when modal opens
+  useEffect(() => {
+    if (isOpen && user?.id) {
+      fetchProfile();
+    }
+  }, [isOpen, user?.id]);
 
   // Update form data when profile loads
   useEffect(() => {
@@ -123,7 +172,7 @@ export default function ProfileSettingsV2({ isOpen, onClose }: ProfileSettingsV2
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    updateProfileMutation.mutate(formData);
+    await updateProfile(formData);
   };
 
   const uploadAvatar = async (event: React.ChangeEvent<HTMLInputElement>) => {
@@ -358,10 +407,10 @@ export default function ProfileSettingsV2({ isOpen, onClose }: ProfileSettingsV2
               </Button>
               <Button 
                 type="submit" 
-                disabled={updateProfileMutation.isPending}
+                disabled={isLoading}
                 className="bg-primary-custom hover:bg-primary-custom/90"
               >
-                {updateProfileMutation.isPending ? 'Saving...' : 'Save Changes'}
+                {isLoading ? 'Saving...' : 'Save Changes'}
               </Button>
             </div>
           </form>

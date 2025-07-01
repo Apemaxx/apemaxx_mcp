@@ -1,22 +1,50 @@
 import { useState, useEffect } from 'react';
-import { useQuery } from '@tanstack/react-query';
 import { useAuth } from '@/components/auth-provider';
 import { Button } from '@/components/ui/button';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { User, ChevronDown, Settings, Bell, LogOut } from 'lucide-react';
 import ProfileSettingsV2 from '@/components/dashboard/profile-settings-v2';
 import { Profile } from '@shared/schema';
+import { supabase } from '@/lib/supabase';
 
 export function UserMenu() {
   const [isOpen, setIsOpen] = useState(false);
   const [showProfileModal, setShowProfileModal] = useState(false);
+  const [profile, setProfile] = useState<Profile | null>(null);
+  const [isLoading, setIsLoading] = useState(true);
   const { user, logout } = useAuth();
 
-  // Load profile data using React Query
-  const { data: profile, isLoading, refetch: refetchProfile } = useQuery<Profile>({
-    queryKey: ['/api/profile'],
-    enabled: !!user?.id,
-  });
+  // Load profile data directly from Supabase
+  const fetchProfile = async () => {
+    if (!user?.id) return;
+    
+    try {
+      setIsLoading(true);
+      console.log('🔍 Fetching profile for user:', user.id);
+      
+      const { data, error } = await supabase
+        .from('profiles')
+        .select('*')
+        .eq('id', user.id)
+        .single();
+
+      if (error) {
+        console.error('❌ Profile fetch error:', error);
+        return;
+      }
+
+      console.log('✅ Profile data fetched:', data);
+      setProfile(data);
+    } catch (error) {
+      console.error('❌ Profile fetch exception:', error);
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    fetchProfile();
+  }, [user?.id]);
 
   // Debug logging and force refetch on user ID change
   useEffect(() => {
@@ -29,9 +57,9 @@ export function UserMenu() {
     // Force refetch when user ID is available but profile is null
     if (user?.id && !profile && !isLoading) {
       console.log('🔄 Forcing profile refetch...');
-      refetchProfile();
+      fetchProfile();
     }
-  }, [user?.id, profile, isLoading, refetchProfile]);
+  }, [user?.id, profile, isLoading]);
 
   const getDisplayName = () => {
     const profileData = profile as any;
@@ -54,7 +82,7 @@ export function UserMenu() {
 
   const handleProfileUpdate = () => {
     // Reload profile after update
-    refetchProfile();
+    fetchProfile();
   };
 
   if (!user) return null;
