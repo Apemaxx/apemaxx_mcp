@@ -38,24 +38,24 @@ export default function ProfileSettingsV2({ isOpen, onClose }: ProfileSettingsV2
   const { toast } = useToast();
   const queryClient = useQueryClient();
   const [uploading, setUploading] = useState(false);
-  
-  // Initialize form data with empty values
-  const [formData, setFormData] = useState({
-    name: '',
-    email: '',
-    company: '',
-    phone: '',
-    bio: '',
-    location: '',
-    website: '',
-    job_title: '',
-    avatar_url: '',
-  });
 
   // Load profile data using React Query
   const { data: profileData, isLoading } = useQuery<ProfileData>({
     queryKey: ['/api/profile'],
     enabled: isOpen && !!user?.id,
+  });
+
+  // Initialize form data with profile data or empty values
+  const [formData, setFormData] = useState({
+    name: profileData?.name || '',
+    email: profileData?.email || '',
+    company: profileData?.company || '',
+    phone: profileData?.phone || '',
+    bio: profileData?.bio || '',
+    location: profileData?.location || '',
+    website: profileData?.website || '',
+    job_title: profileData?.job_title || '',
+    avatar_url: profileData?.avatar_url || '',
   });
 
   // Update profile mutation
@@ -95,8 +95,9 @@ export default function ProfileSettingsV2({ isOpen, onClose }: ProfileSettingsV2
 
   // Update form data when profile loads
   useEffect(() => {
+    console.log('Profile data loaded:', profileData);
     if (profileData) {
-      setFormData({
+      const newFormData = {
         name: profileData.name || '',
         email: profileData.email || '',
         company: profileData.company || '',
@@ -106,7 +107,9 @@ export default function ProfileSettingsV2({ isOpen, onClose }: ProfileSettingsV2
         website: profileData.website || '',
         job_title: profileData.job_title || '',
         avatar_url: profileData.avatar_url || '',
-      });
+      };
+      console.log('Setting form data:', newFormData);
+      setFormData(newFormData);
     }
   }, [profileData]);
 
