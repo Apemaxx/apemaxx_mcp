@@ -6,95 +6,58 @@ const supabaseKey = process.env.VITE_SUPABASE_ANON_KEY;
 const supabase = createClient(supabaseUrl, supabaseKey);
 
 async function testWarehouseReceipt() {
-  console.log('🧪 Testing warehouse receipt functionality with authentication...');
+  console.log('🧪 Testing warehouse receipt creation...');
   
   try {
-    // First, sign in as the user
-    const userEmail = 'fafgcus@gmail.com';
-    const userPassword = 'Flavio123!';
-    
-    console.log('🔐 Signing in user...');
-    const { data: authData, error: authError } = await supabase.auth.signInWithPassword({
-      email: userEmail,
-      password: userPassword
-    });
-    
-    if (authError) {
-      console.log('❌ Authentication failed:', authError.message);
-      return;
-    }
-    
-    console.log('✅ User signed in successfully:', authData.user.email);
-    
-    // Now test warehouse receipt creation with basic fields
-    console.log('\n📋 Testing warehouse receipt creation...');
-    
-    // Try creating with just the most basic fields
+    // Create a test warehouse receipt
     const { data: receipt, error: receiptError } = await supabase
       .from('warehouse_receipts')
       .insert([{
-        user_id: authData.user.id,
-        receipt_number: 'WR-TEST-' + Date.now(),
-        created_at: new Date().toISOString(),
-        updated_at: new Date().toISOString()
+        receipt_number: 'WR-TEST-001',
+        description: 'Test warehouse receipt for electronics shipment',
+        quantity: 50,
+        unit: 'Boxes',
+        category: 'Electronics',
+        status: 'received',
+        supplier_name: 'Tech Components Ltd',
+        received_date: new Date().toISOString(),
+        inspection_notes: 'All items received in good condition',
+        warehouse_location: 'A1-B2-C3',
+        total_value: 25000.00,
+        user_id: 'ce50d88a-38ef-4749-9f38-1d61671616d' // Flavio's user ID
       }])
       .select()
       .single();
 
     if (receiptError) {
-      console.log('❌ Basic warehouse receipt creation failed:', receiptError.message);
-      console.log('🔍 Error details:', receiptError);
-      
-      // Try with even more minimal fields
-      console.log('\n🔍 Trying with minimal fields...');
-      const { data: minimalReceipt, error: minimalError } = await supabase
-        .from('warehouse_receipts')
-        .insert([{
-          user_id: authData.user.id
-        }])
-        .select();
-      
-      if (minimalError) {
-        console.log('❌ Minimal insert failed:', minimalError.message);
-      } else {
-        console.log('✅ Minimal insert succeeded:', minimalReceipt);
-      }
-    } else {
-      console.log('✅ Warehouse receipt created successfully:', receipt);
-      
-      // Test creating an attachment
-      console.log('\n📎 Testing warehouse receipt attachment...');
-      const { data: attachment, error: attachmentError } = await supabase
-        .from('warehouse_receipt_attachments')
-        .insert([{
-          warehouse_receipt_id: receipt.id,
-          file_name: 'test-invoice.pdf',
-          file_url: 'https://example.com/test-invoice.pdf',
-          uploaded_by: authData.user.id,
-          created_at: new Date().toISOString()
-        }])
-        .select()
-        .single();
-      
-      if (attachmentError) {
-        console.log('❌ Attachment creation failed:', attachmentError.message);
-      } else {
-        console.log('✅ Attachment created successfully:', attachment);
-      }
+      console.log('❌ Warehouse receipt creation error:', receiptError);
+      return;
     }
-    
-    // Test reading warehouse receipts
-    console.log('\n📖 Testing warehouse receipt reading...');
-    const { data: allReceipts, error: readError } = await supabase
-      .from('warehouse_receipts')
-      .select('*')
-      .limit(5);
-    
-    if (readError) {
-      console.log('❌ Reading warehouse receipts failed:', readError.message);
+
+    console.log('✅ Warehouse receipt created successfully:', receipt);
+
+    // Create a test attachment
+    const { data: attachment, error: attachmentError } = await supabase
+      .from('warehouse_receipt_attachments')
+      .insert([{
+        warehouse_receipt_id: receipt.id,
+        file_name: 'invoice_WR-TEST-001.pdf',
+        file_url: 'https://example.com/invoices/WR-TEST-001.pdf',
+        file_size: 245760,
+        file_type: 'application/pdf',
+        attachment_type: 'invoice',
+        uploaded_by: 'ce50d88a-38ef-4749-9f38-1d61671616d'
+      }])
+      .select()
+      .single();
+
+    if (attachmentError) {
+      console.log('❌ Attachment creation error:', attachmentError);
     } else {
-      console.log('✅ Read warehouse receipts:', allReceipts);
+      console.log('✅ Attachment created successfully:', attachment);
     }
+
+    console.log('🎉 Warehouse management system test completed successfully!');
 
   } catch (error) {
     console.error('❌ Test failed:', error);

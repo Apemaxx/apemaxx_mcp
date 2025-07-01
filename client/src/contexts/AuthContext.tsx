@@ -1,4 +1,3 @@
-// src/contexts/AuthContext.tsx
 import React, { createContext, useContext, useEffect, useState, ReactNode } from 'react'
 import { Session, User, AuthError } from '@supabase/supabase-js'
 import { supabase, Profile, getUserProfile, AuthUser } from '../lib/supabase'
@@ -68,19 +67,17 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     // Listen for auth state changes
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
       async (event, session) => {
-        console.log('Auth state changed:', event, session?.user?.email)
+        console.log('Auth state changed:', event, session)
         
         setSession(session)
         setUser(session?.user || null)
         
         if (session?.user) {
-          console.log('Fetching profile for user:', session.user.id)
           await fetchUserProfile(session.user.id)
         } else {
           setProfile(null)
         }
         
-        console.log('Setting loading to false')
         setLoading(false)
       }
     )
@@ -94,14 +91,10 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
   // Fetch user profile from database
   const fetchUserProfile = async (userId: string) => {
     try {
-      console.log('Attempting to fetch profile for user ID:', userId)
       const profileData = await getUserProfile(userId)
-      console.log('Profile data received:', profileData)
       setProfile(profileData)
     } catch (error) {
       console.error('Error fetching profile:', error)
-      // Set profile to null if fetch fails, don't let it block loading
-      setProfile(null)
     }
   }
 

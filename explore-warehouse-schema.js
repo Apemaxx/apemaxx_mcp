@@ -6,98 +6,77 @@ const supabaseKey = process.env.VITE_SUPABASE_ANON_KEY;
 const supabase = createClient(supabaseUrl, supabaseKey);
 
 async function exploreWarehouseSchema() {
-  console.log('🔍 Exploring warehouse table schema through error analysis...');
+  console.log('🔍 Exploring warehouse schema...');
   
   try {
-    // Sign in the user first
-    const { data: { user }, error: authError } = await supabase.auth.getUser();
+    // Try to insert and then delete a sample record to understand the schema
+    console.log('\n📋 Testing warehouse_receipts schema...');
     
-    if (authError || !user) {
-      console.log('❌ User not authenticated. Testing table structure without auth...');
+    // Insert a test record
+    const { data: wrInsert, error: wrInsertError } = await supabase
+      .from('warehouse_receipts')
+      .insert([{
+        receipt_number: 'WR-TEST-001',
+        supplier_name: 'Test Supplier',
+        received_date: new Date().toISOString(),
+        status: 'pending',
+        notes: 'Test record for schema discovery'
+      }])
+      .select();
+    
+    if (wrInsertError) {
+      console.log('❌ Insert error reveals schema:', wrInsertError);
     } else {
-      console.log('✅ User authenticated:', user.email);
-    }
-
-    // Try creating warehouse receipt with different field combinations
-    console.log('\n1️⃣ Testing minimal warehouse receipt fields...');
-    
-    const testFields = [
-      { user_id: 'ce50d88a-38ef-4749-9f38-1d61671616d2' },
-      { user_id: 'ce50d88a-38ef-4749-9f38-1d61671616d2', receipt_number: 'WR-TEST-001' },
-      { 
-        user_id: 'ce50d88a-38ef-4749-9f38-1d61671616d2', 
-        receipt_number: 'WR-TEST-002',
-        description: 'Test receipt'
-      },
-      {
-        user_id: 'ce50d88a-38ef-4749-9f38-1d61671616d2',
-        receipt_number: 'WR-TEST-003',
-        description: 'Test receipt with quantity',
-        quantity: 10
-      }
-    ];
-
-    for (const [index, fields] of testFields.entries()) {
-      console.log(`\n📋 Test ${index + 1}: Fields:`, Object.keys(fields));
+      console.log('✅ Successfully inserted test record:', wrInsert);
       
-      const { data, error } = await supabase
+      // Delete the test record
+      const { error: deleteError } = await supabase
         .from('warehouse_receipts')
-        .insert([fields])
-        .select();
+        .delete()
+        .eq('receipt_number', 'WR-TEST-001');
       
-      if (error) {
-        console.log(`❌ Error: ${error.message}`);
-        console.log(`🔍 Error code: ${error.code}`);
-        console.log(`🔍 Error details:`, error.details);
+      if (deleteError) {
+        console.log('⚠️ Could not delete test record:', deleteError);
       } else {
-        console.log(`✅ Success! Created:`, data);
-        
-        // Clean up the test record
-        if (data && data[0]) {
-          await supabase
-            .from('warehouse_receipts')
-            .delete()
-            .eq('id', data[0].id);
-        }
-        break; // Stop on first success
+        console.log('✅ Test record cleaned up');
       }
     }
 
-    // Test attachments table
-    console.log('\n2️⃣ Testing warehouse attachments fields...');
+    // Test warehouse_receipt_attachments schema
+    console.log('\n📎 Testing warehouse_receipt_attachments schema...');
     
-    const attachmentFields = [
-      { 
-        warehouse_receipt_id: 'dummy',
-        file_name: 'test.pdf'
-      },
-      {
-        warehouse_receipt_id: 'dummy',
-        file_name: 'test.pdf',
+    const { data: wraInsert, error: wraInsertError } = await supabase
+      .from('warehouse_receipt_attachments')
+      .insert([{
+        warehouse_receipt_id: 1,
+        file_name: 'test-file.pdf',
         file_url: 'https://example.com/test.pdf',
-        uploaded_by: 'ce50d88a-38ef-4749-9f38-1d61671616d2'
-      }
-    ];
-
-    for (const [index, fields] of attachmentFields.entries()) {
-      console.log(`\n📎 Attachment test ${index + 1}: Fields:`, Object.keys(fields));
+        file_size: 1024,
+        file_type: 'application/pdf',
+        uploaded_at: new Date().toISOString()
+      }])
+      .select();
+    
+    if (wraInsertError) {
+      console.log('❌ Attachment insert error reveals schema:', wraInsertError);
+    } else {
+      console.log('✅ Successfully inserted test attachment:', wraInsert);
       
-      const { data, error } = await supabase
+      // Delete the test record
+      const { error: deleteError } = await supabase
         .from('warehouse_receipt_attachments')
-        .insert([fields])
-        .select();
+        .delete()
+        .eq('file_name', 'test-file.pdf');
       
-      if (error) {
-        console.log(`❌ Error: ${error.message}`);
-        console.log(`🔍 Error code: ${error.code}`);
+      if (deleteError) {
+        console.log('⚠️ Could not delete test attachment:', deleteError);
       } else {
-        console.log(`✅ Success! Created:`, data);
-        break;
+        console.log('✅ Test attachment cleaned up');
       }
     }
 
   } catch (error) {
-    console.error('❌ Exploration failed:', error);
+    console.error('❌ Error exploring schema:', error);
   }
 }
 

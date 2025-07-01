@@ -6,77 +6,62 @@ const supabaseKey = process.env.VITE_SUPABASE_ANON_KEY;
 const supabase = createClient(supabaseUrl, supabaseKey);
 
 async function discoverWarehouseTables() {
-  console.log('🔍 Discovering actual warehouse table structures...');
+  console.log('🔍 Discovering warehouse tables schema...');
   
   try {
-    // Test basic select to see what columns exist
-    console.log('\n1️⃣ Testing warehouse_receipts table structure...');
-    const { data: receipts, error: receiptsError } = await supabase
+    // Check warehouse_receipts table
+    console.log('\n📋 Checking warehouse_receipts table...');
+    const { data: wrData, error: wrError } = await supabase
       .from('warehouse_receipts')
       .select('*')
       .limit(1);
     
-    if (receiptsError) {
-      console.log('❌ Error accessing warehouse_receipts:', receiptsError.message);
+    if (wrError) {
+      console.log('⚠️ warehouse_receipts error:', wrError);
     } else {
-      console.log('✅ warehouse_receipts table accessible');
-      if (receipts && receipts.length > 0) {
-        console.log('📋 Sample record structure:', Object.keys(receipts[0]));
-        console.log('📋 Sample data:', receipts[0]);
+      console.log('✅ warehouse_receipts table exists');
+      if (wrData && wrData.length > 0) {
+        console.log('📊 Sample warehouse receipt:', JSON.stringify(wrData[0], null, 2));
       } else {
-        console.log('📋 Table is empty, trying to infer structure with minimal insert...');
-        
-        // Try inserting with minimal required fields
-        const { data: insertTest, error: insertError } = await supabase
-          .from('warehouse_receipts')
-          .insert([{}])
-          .select();
-        
-        if (insertError) {
-          console.log('💡 Insert error reveals required fields:', insertError.message);
-        }
+        console.log('📊 warehouse_receipts table is empty');
       }
     }
 
-    console.log('\n2️⃣ Testing warehouse_receipt_attachments table structure...');
-    const { data: attachments, error: attachmentsError } = await supabase
+    // Check warehouse_receipt_attachments table
+    console.log('\n📎 Checking warehouse_receipt_attachments table...');
+    const { data: wraData, error: wraError } = await supabase
       .from('warehouse_receipt_attachments')
       .select('*')
       .limit(1);
     
-    if (attachmentsError) {
-      console.log('❌ Error accessing warehouse_receipt_attachments:', attachmentsError.message);
+    if (wraError) {
+      console.log('⚠️ warehouse_receipt_attachments error:', wraError);
     } else {
-      console.log('✅ warehouse_receipt_attachments table accessible');
-      if (attachments && attachments.length > 0) {
-        console.log('📎 Sample record structure:', Object.keys(attachments[0]));
-        console.log('📎 Sample data:', attachments[0]);
+      console.log('✅ warehouse_receipt_attachments table exists');
+      if (wraData && wraData.length > 0) {
+        console.log('📊 Sample attachment:', JSON.stringify(wraData[0], null, 2));
       } else {
-        console.log('📎 Table is empty, trying to infer structure...');
-        
-        const { data: insertTest, error: insertError } = await supabase
-          .from('warehouse_receipt_attachments')
-          .insert([{}])
-          .select();
-        
-        if (insertError) {
-          console.log('💡 Insert error reveals required fields:', insertError.message);
-        }
+        console.log('📊 warehouse_receipt_attachments table is empty');
       }
     }
 
-    // Test if there are any existing warehouse receipts at all
-    console.log('\n3️⃣ Checking for any existing warehouse data...');
-    const { count: receiptCount, error: countError } = await supabase
-      .from('warehouse_receipts')
-      .select('*', { count: 'exact', head: true });
+    // Try to get table schema info
+    console.log('\n🔍 Attempting to get table columns...');
     
-    if (!countError) {
-      console.log(`📊 Total warehouse receipts in database: ${receiptCount}`);
+    // Get all tables to see what's available
+    const { data: tables, error: tablesError } = await supabase
+      .from('information_schema.tables')
+      .select('table_name')
+      .eq('table_schema', 'public');
+    
+    if (tablesError) {
+      console.log('⚠️ Could not fetch table list:', tablesError);
+    } else {
+      console.log('📋 Available tables:', tables?.map(t => t.table_name));
     }
 
   } catch (error) {
-    console.error('❌ Discovery failed:', error);
+    console.error('❌ Error discovering warehouse tables:', error);
   }
 }
 
