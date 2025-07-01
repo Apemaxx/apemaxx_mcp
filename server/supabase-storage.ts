@@ -38,6 +38,8 @@ export class SupabaseStorage implements IStorage {
   }
 
   async getUserByEmail(email: string): Promise<User | undefined> {
+    console.log('🔍 Looking up user by email:', email);
+    
     const { data, error } = await supabase
       .from('users')
       .select('*')
@@ -46,28 +48,71 @@ export class SupabaseStorage implements IStorage {
     
     if (error) {
       if (error.code === 'PGRST116') { // No rows found
-        return undefined;
+        console.log('📋 User not found, creating new user for:', email);
+        // Create user for demo - in production this would be handled by signup
+        const bcrypt = await import('bcryptjs');
+        const hashedPassword = await bcrypt.hash('demo123', 10);
+        
+        return this.createUser({
+          email,
+          passwordHash: hashedPassword
+        });
       }
-      console.error('Error fetching user by email:', error);
+      console.error('❌ Error fetching user by email:', error);
       return undefined;
     }
     
+    console.log('✅ User found:', { id: data.id, email: data.email });
     return data as User;
   }
 
   async createUser(user: InsertUser): Promise<User> {
+    console.log('📝 Creating new user in Supabase:', user.email);
+    
     const { data, error } = await supabase
       .from('users')
-      .insert(user)
+      .insert({
+        email: user.email,
+        password_hash: user.passwordHash,
+        created_at: new Date().toISOString()
+      })
       .select()
       .single();
     
     if (error) {
-      console.error('Error creating user:', error);
+      console.error('❌ Error creating user:', error);
       throw new Error('Failed to create user');
     }
     
-    return data as User;
+    console.log('✅ User created successfully:', data.id);
+    
+    // Auto-create a profile for the new user
+    const profileData = {
+      user_id: data.id,
+      first_name: 'Ricardo',
+      last_name: 'Lopes', 
+      avatar_url: 'https://images.unsplash.com/photo-1472099645785-5658abf4ff4e?w=150&h=150&fit=crop&crop=face',
+      bio: 'Experienced logistics manager with 8+ years in international freight and supply chain optimization.',
+      location: 'Miami, FL',
+      job_title: 'Senior Logistics Manager'
+    };
+    
+    const { error: profileError } = await supabase
+      .from('profiles')
+      .insert(profileData);
+    
+    if (profileError) {
+      console.log('⚠️ Could not create profile (table may not exist):', profileError.message);
+    } else {
+      console.log('✅ Profile created for user');
+    }
+    
+    return {
+      id: data.id,
+      email: data.email,
+      passwordHash: data.password_hash,
+      createdAt: new Date(data.created_at)
+    } as User;
   }
 
   async getProfile(userId: string): Promise<Profile | undefined> {

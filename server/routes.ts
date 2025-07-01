@@ -34,7 +34,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Auth routes
   app.post("/api/auth/register", async (req, res) => {
     try {
-      const { email, passwordHash } = insertUserSchema.parse(req.body);
+      const { email, password } = req.body;
+      
+      if (!email || !password) {
+        return res.status(400).json({ message: "Email and password are required" });
+      }
       
       // Check if user already exists
       const existingUser = await storage.getUserByEmail(email);
@@ -43,7 +47,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
 
       // Hash password
-      const hashedPassword = await bcrypt.hash(passwordHash, 10);
+      const hashedPassword = await bcrypt.hash(password, 10);
       
       // Create user
       const user = await storage.createUser({
