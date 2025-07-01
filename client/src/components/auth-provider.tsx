@@ -1,5 +1,10 @@
 import { createContext, useContext, useEffect, useState } from 'react';
-import { authService, type User } from '@/lib/auth';
+import { supabase } from '@/lib/supabase';
+
+interface User {
+  id: string;
+  email: string;
+}
 
 interface AuthContextType {
   user: User | null;
@@ -16,10 +21,20 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [isLoading, setIsLoading] = useState(true);
 
   useEffect(() => {
-    const initAuth = async () => {
+    // Get initial session
+    const getSession = async () => {
       try {
-        const currentUser = await authService.getCurrentUser();
-        setUser(currentUser);
+        const { data: { session } } = await supabase.auth.getSession();
+        console.log('Auth state changed:', 'INITIAL_SESSION', session);
+        
+        if (session?.user) {
+          setUser({
+            id: session.user.id,
+            email: session.user.email || ''
+          });
+          // Store JWT token for API calls
+          localStorage.setItem('token', session.access_token);
+        }
       } catch (error) {
         console.error('Auth initialization error:', error);
       } finally {
@@ -27,22 +42,79 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       }
     };
 
-    initAuth();
+    getSession();
+
+    // Listen for auth changes
+    const { data: { subscription } } = supabase.auth.onAuthStateChange(
+      async (event, session) => {
+        console.log('Auth state changed:', event, session);
+        
+        if (session?.user) {
+          setUser({
+            id: session.user.id,
+            email: session.user.email || ''
+          });
+          // Store JWT token for API calls
+          localStorage.setItem('token', session.access_token);
+        } else {
+          setUser(null);
+          localStorage.removeItem('token');
+        }
+        setIsLoading(false);
+      }
+    );
+
+    return () => subscription.unsubscribe();
   }, []);
 
   const login = async (email: string, password: string) => {
-    const response = await authService.login(email, password);
-    setUser(response.user);
+    const { data, error } = await supabase.auth.signInWithPassword({
+      email,
+      password,
+    });
+
+    if (error) {
+      throw error;
+    }
+
+    if (data.user) {
+      setUser({
+        id: data.user.id,
+        email: data.user.email || ''
+      });
+      // Store JWT token for API calls
+      if (data.session) {
+        localStorage.setItem('token', data.session.access_token);
+      }
+    }
   };
 
   const register = async (email: string, password: string) => {
-    const response = await authService.register(email, password);
-    setUser(response.user);
+    const { data, error } = await supabase.auth.signUp({
+      email,
+      password,
+    });
+
+    if (error) {
+      throw error;
+    }
+
+    if (data.user) {
+      setUser({
+        id: data.user.id,
+        email: data.user.email || ''
+      });
+      // Store JWT token for API calls
+      if (data.session) {
+        localStorage.setItem('token', data.session.access_token);
+      }
+    }
   };
 
-  const logout = () => {
-    authService.logout();
+  const logout = async () => {
+    await supabase.auth.signOut();
     setUser(null);
+    localStorage.removeItem('token');
   };
 
   return (

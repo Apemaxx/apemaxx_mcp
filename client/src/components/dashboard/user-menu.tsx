@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { useAuth } from '@/components/auth-provider';
 import { Button } from '@/components/ui/button';
@@ -7,15 +7,59 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/u
 import { User, ChevronDown, Settings, Bell, LogOut } from 'lucide-react';
 import { ProfileSettings } from '@/components/dashboard/profile-settings';
 import { Profile } from '@shared/schema';
+import { supabase } from '@/lib/supabase';
 
 export function UserMenu() {
   const [isOpen, setIsOpen] = useState(false);
   const [showProfileModal, setShowProfileModal] = useState(false);
   const { user, logout } = useAuth();
 
-  // Fetch real profile data from Supabase
+  // Fetch real profile data directly from Supabase
   const { data: profile, isLoading } = useQuery<Profile>({
-    queryKey: ['/api/profile'],
+    queryKey: ['profile', user?.id],
+    queryFn: async () => {
+      if (!user?.id) return null;
+      
+      // Try to fetch existing profile
+      const { data: existingProfile, error: fetchError } = await supabase
+        .from('profiles')
+        .select('*')
+        .eq('id', user.id)
+        .single();
+
+      if (existingProfile) {
+        return existingProfile as Profile;
+      }
+
+      // If no profile exists, create one with Supabase user metadata
+      const { data: supabaseUser } = await supabase.auth.getUser();
+      const userMeta = supabaseUser.user?.user_metadata;
+      
+      const newProfile = {
+        id: user.id,
+        user_id: user.id,
+        email: user.email,
+        name: userMeta?.full_name || userMeta?.first_name + ' ' + userMeta?.last_name || null,
+        company: userMeta?.company || null,
+        phone: userMeta?.phone || null,
+        created_at: new Date().toISOString(),
+        updated_at: new Date().toISOString(),
+      };
+
+      const { data: createdProfile, error: createError } = await supabase
+        .from('profiles')
+        .insert(newProfile)
+        .select()
+        .single();
+
+      if (createError) {
+        console.error('Error creating profile:', createError);
+        return null;
+      }
+
+      return createdProfile as Profile;
+    },
+    enabled: !!user?.id,
   });
 
   const handleLogout = () => {

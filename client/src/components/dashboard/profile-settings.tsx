@@ -11,9 +11,12 @@ import { apiRequest, queryClient } from "@/lib/queryClient";
 import { Profile } from "@shared/schema";
 import { User, Building, Phone, MapPin, Globe, Briefcase, Save, Edit3, Camera, Upload } from 'lucide-react';
 import { Avatar, AvatarImage, AvatarFallback } from '@/components/ui/avatar';
+import { supabase } from '@/lib/supabase';
+import { useAuth } from '@/components/auth-provider';
 
 export function ProfileSettings() {
   const { toast } = useToast();
+  const { user } = useAuth();
   const [isEditing, setIsEditing] = useState(false);
   const [formData, setFormData] = useState({
     name: '',
@@ -28,9 +31,26 @@ export function ProfileSettings() {
     avatarUrl: '',
   });
 
-  // Fetch current profile data
+  // Fetch current profile data directly from Supabase
   const { data: profile, isLoading } = useQuery<Profile>({
-    queryKey: ['/api/profile'],
+    queryKey: ['profile', user?.id],
+    queryFn: async () => {
+      if (!user?.id) return null;
+      
+      const { data, error } = await supabase
+        .from('profiles')
+        .select('*')
+        .eq('id', user.id)
+        .single();
+
+      if (error && error.code !== 'PGRST116') {
+        console.error('Error fetching user profile:', error);
+        return null;
+      }
+
+      return data as Profile;
+    },
+    enabled: !!user?.id,
   });
 
   // Update form data when profile loads
@@ -53,23 +73,34 @@ export function ProfileSettings() {
 
   // Update profile mutation
   const updateProfileMutation = useMutation({
-    mutationFn: (data: any) => apiRequest('/api/profile', {
-      method: 'PATCH',
-      body: JSON.stringify(data),
-      headers: { 'Content-Type': 'application/json' },
-    }),
+    mutationFn: async (data: any) => {
+      if (!user?.id) throw new Error('User not authenticated');
+      
+      const { data: updatedProfile, error } = await supabase
+        .from('profiles')
+        .update({ ...data, updated_at: new Date().toISOString() })
+        .eq('id', user.id)
+        .select()
+        .single();
+
+      if (error) {
+        throw error;
+      }
+
+      return updatedProfile;
+    },
     onSuccess: () => {
       toast({
         title: "Profile updated",
         description: "Your profile has been updated successfully",
       });
       setIsEditing(false);
-      queryClient.invalidateQueries({ queryKey: ['/api/profile'] });
+      queryClient.invalidateQueries({ queryKey: ['profile', user?.id] });
     },
-    onError: () => {
+    onError: (error: any) => {
       toast({
         title: "Update failed",
-        description: "There was an error updating your profile",
+        description: error.message || "There was an error updating your profile",
         variant: "destructive",
       });
     },
