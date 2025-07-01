@@ -10,7 +10,8 @@ export const users = pgTable("users", {
 });
 
 export const profiles = pgTable("profiles", {
-  id: uuid("id").primaryKey(), // References auth.users(id) in Supabase
+  id: uuid("id").primaryKey().defaultRandom(),
+  userId: text("user_id").notNull().unique(), // References auth.users(id) in Supabase
   email: text("email"),
   name: text("name"),
   company: text("company"),

@@ -6,7 +6,6 @@ import { AIInsights } from '@/components/dashboard/ai-insights';
 import { ChatInterface } from '@/components/dashboard/chat-interface';
 import { LiveTracking } from '@/components/dashboard/live-tracking';
 import { WarehouseReceipts } from '@/components/dashboard/warehouse-receipts';
-import { ProfileSettings } from '@/components/dashboard/profile-settings';
 
 export default function Dashboard() {
   return (
@@ -51,9 +50,6 @@ export default function Dashboard() {
 
           {/* Recent Warehouse Receipts */}
           <WarehouseReceipts />
-
-          {/* Profile Settings */}
-          <ProfileSettings />
         </div>
 
       </div>

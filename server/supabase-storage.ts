@@ -143,7 +143,7 @@ export class SupabaseStorage implements IStorage {
     const { data, error } = await supabase
       .from('profiles')
       .select('*')
-      .eq('id', userId)
+      .eq('user_id', userId)
       .single();
     
     if (error) {
@@ -176,14 +176,14 @@ export class SupabaseStorage implements IStorage {
     const { data, error } = await supabase
       .from('profiles')
       .update({ ...profile, updated_at: new Date().toISOString() })
-      .eq('id', userId)
+      .eq('user_id', userId)
       .select()
       .single();
     
     if (error) {
       // If profile doesn't exist, create it
       if (error.code === 'PGRST116') {
-        return this.createProfile({ id: userId, ...profile });
+        return this.createProfile({ userId, ...profile });
       }
       console.error('Error updating profile:', error);
       throw new Error('Failed to update profile');
