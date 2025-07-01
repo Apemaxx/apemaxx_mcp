@@ -1,0 +1,25 @@
+PROFILES Table Schema (public.profiles)
+Column NameData TypeNullableDefault ValueDescriptioniduuidNO-Primary KeyemailtextYES-User email addressnametextYES-User's full namecompanytextYES-Company namephonetextYES-Phone numberlanguagetextYES'pt'Default language (Portuguese)llm_api_keytextYES-LLM API key for AI servicescreated_attimestamptzNOtimezone('utc', now())Record creation timestampupdated_attimestamptzNOtimezone('utc', now())Last update timestampavatar_urltextYES-Profile picture URLbiotextYES-User biographylocationtextYES-User locationwebsitetextYES-Personal/company websitejob_titletextYES-Job titleorganization_idintegerYES-Foreign key to organizations table
+Constraints:
+
+Primary Key: id (uuid)
+Foreign Key: organization_id → public.organizations.id
+Foreign Key: id → auth.users.id (one-to-one relationship)
+
+
+USERS Table Schema (auth.users)
+Column NameData TypeNullableDefault ValueDescriptioniduuidNO-Primary Keyinstance_iduuidYES-Supabase instance IDaudvarchar(255)YES-Audience claimrolevarchar(255)YES-User roleemailvarchar(255)YES-User emailencrypted_passwordvarchar(255)YES-Encrypted passwordemail_confirmed_attimestamptzYES-Email confirmation timestampinvited_attimestamptzYES-User invitation timestampconfirmation_tokenvarchar(255)YES-Email confirmation tokenconfirmation_sent_attimestamptzYES-Confirmation sent timestamprecovery_tokenvarchar(255)YES-Password recovery tokenrecovery_sent_attimestamptzYES-Recovery sent timestampemail_change_token_newvarchar(255)YES-New email change tokenemail_changevarchar(255)YES-New email addressemail_change_sent_attimestamptzYES-Email change sent timestamplast_sign_in_attimestamptzYES-Last sign-in timestampraw_app_meta_datajsonbYES-Application metadataraw_user_meta_datajsonbYES-User metadatais_super_adminbooleanYES-Super admin flagcreated_attimestamptzYES-Account creation timestampupdated_attimestamptzYES-Last update timestampphonetextYESNULLPhone numberphone_confirmed_attimestamptzYES-Phone confirmation timestampphone_changetextYES''New phone numberphone_change_tokenvarchar(255)YES''Phone change tokenphone_change_sent_attimestamptzYES-Phone change sent timestampconfirmed_attimestamptzYES-Account confirmed timestampemail_change_token_currentvarchar(255)YES''Current email change tokenemail_change_confirm_statussmallintYES0Email change confirmation statusbanned_untiltimestamptzYES-Account ban expiryreauthentication_tokenvarchar(255)YES''Reauthentication tokenreauthentication_sent_attimestamptzYES-Reauthentication sent timestampis_sso_userbooleanNOfalseSingle Sign-On user flagdeleted_attimestamptzYES-Soft delete timestampis_anonymousbooleanNOfalseAnonymous user flag
+Constraints:
+
+Primary Key: id (uuid)
+
+
+Relationship Between Tables
+The profiles table extends the auth.users table with additional user information:
+
+profiles.id has a one-to-one relationship with auth.users.id
+auth.users handles authentication and core user management
+profiles stores extended user profile information and business-related data
+profiles.organization_id links users to organizations for multi-tenant support
+
+This is a typical Supabase pattern where the auth.users table manages authentication, while the profiles table in the public schema stores extended user profile data with Row Level Security (RLS) enabled.

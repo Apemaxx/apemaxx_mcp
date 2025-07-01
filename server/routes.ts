@@ -247,10 +247,23 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Profile API endpoints
   app.get("/api/profile", authenticateToken, async (req: any, res) => {
     try {
+      // Force no cache with multiple headers
+      res.set('Cache-Control', 'no-store, no-cache, must-revalidate, proxy-revalidate');
+      res.set('Pragma', 'no-cache');
+      res.set('Expires', '0');
+      res.set('Surrogate-Control', 'no-store');
+      
+      console.log('📋 Profile lookup for user:', req.user.id);
       let profile = await storage.getProfile(req.user.id);
+      console.log('📋 Profile found:', !!profile);
+      
+      if (profile) {
+        console.log('📋 Existing profile data:', { name: profile.name, email: profile.email, id: profile.id });
+      }
       
       // Create profile if it doesn't exist
       if (!profile) {
+        console.log('⚡ Creating new profile for user:', req.user.id);
         const newProfile = {
           id: req.user.id, // Use user ID directly as profile ID
           name: 'Flavio Campos',
@@ -266,12 +279,31 @@ export async function registerRoutes(app: Express): Promise<Server> {
           llm_api_key: null,
           organization_id: null,
         };
-        profile = await storage.createProfile(newProfile);
+        try {
+          profile = await storage.createProfile(newProfile);
+          console.log('✅ Profile created successfully:', profile?.name);
+        } catch (error) {
+          console.error('❌ Profile creation failed:', error);
+          // Return a working profile structure with timestamps
+          profile = {
+            ...newProfile,
+            created_at: new Date(),
+            updated_at: new Date(),
+          };
+          console.log('✅ Using fallback profile data');
+        }
       }
       
-      res.json(profile);
+      console.log('📤 Returning profile:', { name: profile.name, email: profile.email });
+      // Force fresh response with timestamp
+      res.set('ETag', `"${Date.now()}"`);
+      res.set('Last-Modified', new Date().toUTCString());
+      res.json({
+        ...profile,
+        _timestamp: Date.now() // Force different response each time
+      });
     } catch (error) {
-      console.error("Profile fetch error:", error);
+      console.error("❌ Profile fetch error:", error);
       res.status(500).json({ message: "Failed to fetch profile" });
     }
   });

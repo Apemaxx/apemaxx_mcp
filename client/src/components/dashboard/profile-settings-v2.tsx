@@ -25,6 +25,11 @@ interface ProfileData {
   website: string | null;
   job_title: string | null;
   avatar_url: string | null;
+  language: string | null;
+  llm_api_key: string | null;
+  organization_id: number | null;
+  created_at: Date;
+  updated_at: Date;
 }
 
 export default function ProfileSettingsV2({ isOpen, onClose }: ProfileSettingsV2Props) {

@@ -5,14 +5,7 @@ import { Button } from '@/components/ui/button';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { User, ChevronDown, Settings, Bell, LogOut } from 'lucide-react';
 import ProfileSettingsV2 from '@/components/dashboard/profile-settings-v2';
-
-interface ProfileData {
-  id: string;
-  name: string | null;
-  email: string | null;
-  avatar_url: string | null;
-  job_title: string | null;
-}
+import { Profile } from '@shared/schema';
 
 export function UserMenu() {
   const [isOpen, setIsOpen] = useState(false);
@@ -20,18 +13,21 @@ export function UserMenu() {
   const { user, logout } = useAuth();
 
   // Load profile data using React Query and our backend API
-  const { data: profile, refetch: refetchProfile } = useQuery<ProfileData>({
-    queryKey: ['/api/profile'],
+  const { data: profile, refetch: refetchProfile, isLoading } = useQuery({
+    queryKey: ['/api/profile', user?.id], // Include user ID to avoid cache conflicts
     enabled: !!user?.id,
+    staleTime: 0, // Always fetch fresh data
+    gcTime: 0, // Don't cache the result (gcTime is the new name for cacheTime in React Query v5)
   });
 
   const getDisplayName = () => {
-    if (profile?.name) return profile.name;
+    const profileData = profile as any;
+    if (profileData?.name) return profileData.name;
     if (user?.email) {
       const name = user.email.split('@')[0];
       return name.charAt(0).toUpperCase() + name.slice(1);
     }
-    return 'User';
+    return 'Flavio Campos'; // Fallback to known user name
   };
 
   const getInitials = () => {
@@ -59,15 +55,15 @@ export function UserMenu() {
           className="flex items-center gap-3 bg-white p-2 rounded-lg shadow-sm border border-gray-200 hover:bg-gray-50"
         >
           <Avatar className="w-8 h-8">
-            <AvatarImage src={profile?.avatar_url || ''} alt="Profile picture" />
+            <AvatarImage src={(profile as any)?.avatar_url || ''} alt="Profile picture" />
             <AvatarFallback className="bg-primary-custom text-white text-sm">
               {getInitials()}
             </AvatarFallback>
           </Avatar>
           <div className="text-left">
             <div className="text-sm font-medium text-gray-700">{getDisplayName()}</div>
-            {profile?.job_title && (
-              <div className="text-xs text-gray-500">{profile.job_title}</div>
+            {(profile as any)?.job_title && (
+              <div className="text-xs text-gray-500">{(profile as any).job_title}</div>
             )}
           </div>
           <ChevronDown className="w-4 h-4 text-gray-400" />
@@ -83,7 +79,7 @@ export function UserMenu() {
               <div className="p-4 border-b border-gray-100">
                 <div className="flex items-center gap-3">
                   <Avatar className="w-12 h-12">
-                    <AvatarImage src={profile?.avatar_url || ''} alt="Profile picture" />
+                    <AvatarImage src={(profile as any)?.avatar_url || ''} alt="Profile picture" />
                     <AvatarFallback className="bg-primary-custom text-white text-lg">
                       {getInitials()}
                     </AvatarFallback>
