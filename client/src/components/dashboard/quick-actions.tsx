@@ -3,13 +3,14 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { PlusCircle, FileUp, Search, DollarSign } from 'lucide-react';
 import { NewBookingModal } from '@/components/modals/new-booking-modal';
+import { CreateWarehouseReceiptDialog } from '@/components/warehouse/create-warehouse-receipt-dialog';
 
 export function QuickActions() {
   const [showNewBookingModal, setShowNewBookingModal] = useState(false);
+  const [showImportWRDialog, setShowImportWRDialog] = useState(false);
 
   const handleImportWR = () => {
-    // TODO: Implement warehouse receipt import
-    console.log('Import WR clicked');
+    setShowImportWRDialog(true);
   };
 
   const handleTrackShipment = () => {
@@ -71,6 +72,15 @@ export function QuickActions() {
       <NewBookingModal 
         open={showNewBookingModal} 
         onOpenChange={setShowNewBookingModal} 
+      />
+
+      <CreateWarehouseReceiptDialog 
+        open={showImportWRDialog}
+        onOpenChange={setShowImportWRDialog}
+        onSuccess={() => {
+          setShowImportWRDialog(false);
+          console.log('Warehouse receipt created successfully');
+        }}
       />
     </>
   );
