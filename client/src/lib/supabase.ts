@@ -55,3 +55,51 @@ export interface WarehouseReceiptAttachment {
   file_size: number
   created_at: string
 }
+
+// Auth user type for compatibility
+export interface AuthUser {
+  id: string
+  email: string
+  name?: string
+}
+
+// Get user profile function
+export async function getUserProfile(userId: string): Promise<Profile | null> {
+  try {
+    const { data, error } = await supabase
+      .from('profiles')
+      .select('*')
+      .eq('user_id', userId)
+      .single()
+
+    if (error) {
+      console.error('Error fetching user profile:', error.message)
+      return null
+    }
+
+    return data
+  } catch (error) {
+    console.error('Profile fetch error:', error)
+    return null
+  }
+}
+
+// Update user profile function
+export async function updateUserProfile(userId: string, updates: Partial<Profile>): Promise<boolean> {
+  try {
+    const { error } = await supabase
+      .from('profiles')
+      .update({ ...updates, updated_at: new Date().toISOString() })
+      .eq('user_id', userId)
+
+    if (error) {
+      console.error('Error updating profile:', error.message)
+      return false
+    }
+
+    return true
+  } catch (error) {
+    console.error('Profile update error:', error)
+    return false
+  }
+}
