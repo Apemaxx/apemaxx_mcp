@@ -148,6 +148,20 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // GET endpoint for fetching user profile
+  app.get("/api/profile", authenticateToken, async (req: any, res) => {
+    try {
+      const profile = await storage.getProfile(req.user.id);
+      if (!profile) {
+        return res.status(404).json({ message: "Profile not found" });
+      }
+      res.json(profile);
+    } catch (error) {
+      console.error("Get profile error:", error);
+      res.status(500).json({ message: "Failed to fetch profile" });
+    }
+  });
+
   // PATCH endpoint for profile updates (including profit settings)
   app.patch("/api/profile", authenticateToken, async (req: any, res) => {
     try {
