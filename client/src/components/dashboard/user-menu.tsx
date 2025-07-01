@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { useAuth } from '@/components/auth-provider';
+import { useAuth } from '@/contexts/AuthContext';
 import { Button } from '@/components/ui/button';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
@@ -9,10 +9,10 @@ import { ProfileSettings } from '@/components/dashboard/profile-settings';
 export function UserMenu() {
   const [isOpen, setIsOpen] = useState(false);
   const [showProfileModal, setShowProfileModal] = useState(false);
-  const { user, profile, logout } = useAuth();
+  const { user, profile, loading, signOut } = useAuth();
 
   const handleLogout = async () => {
-    logout();
+    await signOut();
     setIsOpen(false);
   };
 
@@ -48,9 +48,7 @@ export function UserMenu() {
           className="flex items-center gap-3 bg-white p-2 rounded-lg shadow-sm border border-gray-200 hover:bg-gray-50"
         >
           <Avatar className="w-8 h-8">
-            {profile?.avatar_url && (
-              <AvatarImage src={profile.avatar_url} alt="Profile picture" />
-            )}
+            <AvatarImage src={profile?.avatar_url || ''} alt="Profile picture" />
             <AvatarFallback className="bg-primary-custom text-white text-sm">
               {getInitials()}
             </AvatarFallback>
@@ -76,20 +74,17 @@ export function UserMenu() {
                   <Settings className="w-4 h-4" />
                   Profile Settings
                 </button>
-                <button
-                  onClick={() => setIsOpen(false)}
-                  className="flex items-center gap-3 w-full px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"
-                >
+                <button className="flex items-center gap-3 w-full px-4 py-2 text-sm text-gray-700 hover:bg-gray-100">
                   <Bell className="w-4 h-4" />
                   Notifications
                 </button>
-                <div className="border-t border-gray-100 my-1" />
+                <hr className="my-1 border-gray-200" />
                 <button
                   onClick={handleLogout}
                   className="flex items-center gap-3 w-full px-4 py-2 text-sm text-red-600 hover:bg-red-50"
                 >
                   <LogOut className="w-4 h-4" />
-                  Sign Out
+                  Sign out
                 </button>
               </div>
             </div>
@@ -98,11 +93,11 @@ export function UserMenu() {
       </div>
 
       <Dialog open={showProfileModal} onOpenChange={setShowProfileModal}>
-        <DialogContent className="max-w-2xl">
+        <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
           <DialogHeader>
             <DialogTitle>Profile Settings</DialogTitle>
           </DialogHeader>
-          <ProfileSettings onClose={() => setShowProfileModal(false)} />
+          <ProfileSettings />
         </DialogContent>
       </Dialog>
     </>
