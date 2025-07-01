@@ -10,22 +10,21 @@ export const users = pgTable("users", {
 });
 
 export const profiles = pgTable("profiles", {
-  id: uuid("id").primaryKey().defaultRandom(),
-  userId: text("user_id").notNull().unique(), // References auth.users(id) in Supabase
+  id: uuid("id").primaryKey(), // This IS the auth.users.id (direct reference)
   email: text("email"),
   name: text("name"),
   company: text("company"),
   phone: text("phone"),
-  language: text("language").default("en"),
-  llmApiKey: text("llm_api_key"), // For AI providers - key profile setting
-  avatarUrl: text("avatar_url"),
+  language: text("language").default("pt"),
+  llm_api_key: text("llm_api_key"), // For AI providers - key profile setting
+  avatar_url: text("avatar_url"),
   bio: text("bio"),
   location: text("location"),
   website: text("website"),
-  jobTitle: text("job_title"),
-  organizationId: integer("organization_id"), // References organizations(id)
-  createdAt: timestamp("created_at").defaultNow().notNull(),
-  updatedAt: timestamp("updated_at").defaultNow().notNull(),
+  job_title: text("job_title"),
+  organization_id: integer("organization_id"), // References organizations(id)
+  created_at: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
+  updated_at: timestamp("updated_at", { withTimezone: true }).defaultNow().notNull(),
 });
 
 export const shipments = pgTable("shipments", {
@@ -153,8 +152,8 @@ export const insertChatMessageSchema = createInsertSchema(chatMessages).omit({
 });
 
 export const insertProfileSchema = createInsertSchema(profiles).omit({
-  createdAt: true,
-  updatedAt: true,
+  created_at: true,
+  updated_at: true,
 }).partial({ id: true }); // Make id optional for creation
 
 // Types

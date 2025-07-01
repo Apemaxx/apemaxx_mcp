@@ -252,16 +252,19 @@ export async function registerRoutes(app: Express): Promise<Server> {
       // Create profile if it doesn't exist
       if (!profile) {
         const newProfile = {
-          userId: req.user.id,
-          name: 'Flavio Campos', // Default from auth metadata
+          id: req.user.id, // Use user ID directly as profile ID
+          name: 'Flavio Campos',
           email: req.user.email,
           phone: '19546693524',
           company: 'APE Global',
-          jobTitle: 'Operations Manager',
+          job_title: 'Operations Manager',
           bio: 'Logistics operations expert specializing in freight management and supply chain optimization.',
           location: 'Miami, FL',
           website: 'https://apeglobal.io',
-          avatarUrl: null,
+          language: 'en',
+          avatar_url: null,
+          llm_api_key: null,
+          organization_id: null,
         };
         profile = await storage.createProfile(newProfile);
       }

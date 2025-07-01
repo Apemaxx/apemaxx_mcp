@@ -53,10 +53,22 @@ export default function ProfileSettingsV2({ isOpen, onClose }: ProfileSettingsV2
 
   // Update profile mutation
   const updateProfileMutation = useMutation({
-    mutationFn: (profileData: any) => apiRequest('/api/profile', {
-      method: 'PUT',
-      body: JSON.stringify(profileData),
-    }),
+    mutationFn: async (profileData: any) => {
+      const response = await fetch('/api/profile', {
+        method: 'PUT',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${localStorage.getItem('token')}`,
+        },
+        body: JSON.stringify(profileData),
+      });
+      
+      if (!response.ok) {
+        throw new Error('Failed to update profile');
+      }
+      
+      return response.json();
+    },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['/api/profile'] });
       toast({
