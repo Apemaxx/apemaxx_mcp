@@ -1,99 +1,57 @@
 import { createClient } from '@supabase/supabase-js'
 
-// Your Supabase project configuration
-const supabaseUrl = 'https://bqmpupymchanohpfzglw.supabase.co'
-const supabaseAnonKey = import.meta.env.VITE_SUPABASE_ANON_KEY || 'your_anon_key_here' // Replace with your actual anon key
+// Supabase configuration
+const supabaseUrl = import.meta.env.VITE_SUPABASE_URL || 'https://bqmpupymchanohpfzglw.supabase.co'
+const supabaseAnonKey = import.meta.env.VITE_SUPABASE_ANON_KEY || 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImJxbXB1cHltY2hhbm9ocGZ6Z2x3Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTA5MzY2ODcsImV4cCI6MjA2NjUxMjY4N30.VnlHnThWyiSC4f2wX7iDl1wAmqiS0Fv0FowBTGmKa-8'
 
-// Create Supabase client with additional options
+if (!supabaseUrl || !supabaseAnonKey) {
+  throw new Error('Missing Supabase environment variables')
+}
+
 export const supabase = createClient(supabaseUrl, supabaseAnonKey, {
   auth: {
     autoRefreshToken: true,
     persistSession: true,
     detectSessionInUrl: true
-  },
-  realtime: {
-    params: {
-      eventsPerSecond: 10
-    }
   }
 })
 
-// Database types (based on your schema from the document)
+// Database types for type safety
 export interface Profile {
   id: string
-  email: string | null
-  name: string | null
+  user_id: string
+  first_name: string | null
+  last_name: string | null
+  full_name: string | null
+  avatar_url: string | null
+  job_title: string | null
   company: string | null
   phone: string | null
-  language: string
-  llm_api_key: string | null
-  created_at: string
-  updated_at: string
-  avatar_url: string | null
-  bio: string | null
-  location: string | null
-  website: string | null
-  job_title: string | null
-  organization_id: number | null
-}
-
-export interface Organization {
-  id: number
-  name: string
-  domain: string | null
-  subscription_plan: string
-  settings: Record<string, any>
   created_at: string
   updated_at: string
 }
 
-// Auth types
-export interface AuthUser {
+export interface WarehouseReceipt {
   id: string
-  email?: string
-  user_metadata?: {
-    name?: string
-    avatar_url?: string
-  }
+  user_id: string
+  receipt_number: string
+  supplier_name: string
+  total_pallets: number
+  total_boxes: number
+  total_crates: number
+  category: string
+  status: string
+  received_date: string
+  created_at: string
+  updated_at: string
 }
 
-// Helper function to get user profile
-export const getUserProfile = async (userId: string): Promise<Profile | null> => {
-  try {
-    const { data, error } = await supabase
-      .from('profiles')
-      .select('*')
-      .eq('id', userId)
-      .single()
-
-    if (error) {
-      console.error('Error fetching user profile:', error)
-      return null
-    }
-
-    return data
-  } catch (error) {
-    console.error('Error in getUserProfile:', error)
-    return null
-  }
-}
-
-// Helper function to update user profile
-export const updateUserProfile = async (userId: string, updates: Partial<Profile>): Promise<boolean> => {
-  try {
-    const { error } = await supabase
-      .from('profiles')
-      .update({ ...updates, updated_at: new Date().toISOString() })
-      .eq('id', userId)
-
-    if (error) {
-      console.error('Error updating user profile:', error)
-      return false
-    }
-
-    return true
-  } catch (error) {
-    console.error('Error in updateUserProfile:', error)
-    return false
-  }
+export interface WarehouseReceiptAttachment {
+  id: string
+  warehouse_receipt_id: string
+  file_name: string
+  file_url: string
+  file_type: string
+  file_size: number
+  created_at: string
 }
