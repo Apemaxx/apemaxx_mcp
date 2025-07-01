@@ -5,6 +5,8 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Button } from '@/components/ui/button';
 import { CreateWarehouseReceiptDialog } from '@/components/warehouse/create-warehouse-receipt-dialog';
+import { supabase } from '@/lib/supabase';
+import { useQueryClient } from '@tanstack/react-query';
 
 interface WarehouseReceipt {
   id: number;
@@ -19,9 +21,26 @@ interface WarehouseReceipt {
 
 export function WarehouseReceipts() {
   const [showCreateDialog, setShowCreateDialog] = useState(false);
+  const queryClient = useQueryClient();
   
   const { data: receipts, isLoading, error } = useQuery<WarehouseReceipt[]>({
-    queryKey: ['/api/warehouse-receipts'],
+    queryKey: ['warehouse-receipts'],
+    queryFn: async () => {
+      console.log('Fetching warehouse receipts from Supabase...');
+      const { data, error } = await supabase
+        .from('warehouse_receipts')
+        .select('*')
+        .order('created_at', { ascending: false })
+        .limit(10);
+      
+      if (error) {
+        console.error('Error fetching warehouse receipts:', error);
+        throw error;
+      }
+      
+      console.log('Successfully fetched warehouse receipts:', data);
+      return data;
+    },
     refetchInterval: 60000, // Refresh every minute
   });
 
@@ -131,6 +150,7 @@ export function WarehouseReceipts() {
         onOpenChange={setShowCreateDialog}
         onSuccess={() => {
           setShowCreateDialog(false);
+          queryClient.invalidateQueries({ queryKey: ['warehouse-receipts'] });
           console.log('Warehouse receipt created successfully');
         }}
       />

@@ -65,20 +65,27 @@ export function CreateWarehouseReceiptDialog({
     mutationFn: async (data: CreateReceiptFormData) => {
       if (!user?.id) throw new Error('User not authenticated');
 
-      const receiptData = {
-        receipt_number: data.receiptNumber,
-        description: data.description,
-        quantity: data.quantity,
-        unit: data.unit,
-        category: data.category,
-        status: data.status,
-        supplier_name: data.supplierName || null,
-        received_date: data.receivedDate ? new Date(data.receivedDate).toISOString() : null,
-        inspection_notes: data.inspectionNotes || null,
-        warehouse_location: data.warehouseLocation || null,
-        total_value: data.totalValue || null,
+      // Start with minimal required fields and add optional ones
+      const receiptData: any = {
         user_id: user.id,
+        receipt_number: data.receiptNumber || `WR-${Date.now()}`,
+        created_at: new Date().toISOString(),
+        updated_at: new Date().toISOString()
       };
+
+      // Add optional fields if they exist in the table structure
+      if (data.description) receiptData.description = data.description;
+      if (data.quantity) receiptData.quantity = data.quantity;
+      if (data.unit) receiptData.unit = data.unit;
+      if (data.category) receiptData.category = data.category;
+      if (data.status) receiptData.status = data.status;
+      if (data.supplierName) receiptData.supplier_name = data.supplierName;
+      if (data.receivedDate) receiptData.received_date = new Date(data.receivedDate).toISOString();
+      if (data.inspectionNotes) receiptData.inspection_notes = data.inspectionNotes;
+      if (data.warehouseLocation) receiptData.warehouse_location = data.warehouseLocation;
+      if (data.totalValue) receiptData.total_value = data.totalValue;
+
+      console.log('Creating warehouse receipt with data:', receiptData);
 
       const { data: result, error } = await supabase
         .from('warehouse_receipts')
@@ -86,7 +93,12 @@ export function CreateWarehouseReceiptDialog({
         .select()
         .single();
 
-      if (error) throw error;
+      if (error) {
+        console.error('Supabase error details:', error);
+        throw new Error(`Database error: ${error.message}`);
+      }
+      
+      console.log('Successfully created warehouse receipt:', result);
       return result;
     },
     onSuccess: () => {
