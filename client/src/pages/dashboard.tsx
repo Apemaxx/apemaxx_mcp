@@ -5,9 +5,34 @@ import { ConsolidationPlan } from '@/components/dashboard/consolidation-plan';
 import { AIInsights } from '@/components/dashboard/ai-insights';
 import { ChatInterface } from '@/components/dashboard/chat-interface';
 import { LiveTracking } from '@/components/dashboard/live-tracking';
-import { WarehouseReceipts } from '@/components/dashboard/warehouse-receipts';
+import WarehouseDashboardCard from '@/components/WarehouseDashboardCard';
+import { useAuth } from '@/components/auth-provider';
+import { useLocation } from 'wouter';
 
 export default function Dashboard() {
+  const { user } = useAuth();
+  const [, setLocation] = useLocation();
+  
+  const handleWarehouseNavigation = (action: string, receiptId: string | null = null) => {
+    switch (action) {
+      case 'create':
+        setLocation('/warehouse?mode=create');
+        break;
+      case 'view':
+        if (receiptId) {
+          setLocation(`/warehouse?receipt=${receiptId}`);
+        } else {
+          setLocation('/warehouse');
+        }
+        break;
+      case 'manage':
+        setLocation('/warehouse');
+        break;
+      default:
+        setLocation('/warehouse');
+    }
+  };
+
   return (
     <div className="p-4 md:p-8">
       {/* Header with User Menu */}
@@ -51,7 +76,10 @@ export default function Dashboard() {
           <LiveTracking />
 
           {/* Recent Warehouse Receipts */}
-          <WarehouseReceipts />
+          <WarehouseDashboardCard 
+            userId={user?.id} 
+            onNavigateToFull={handleWarehouseNavigation}
+          />
         </div>
 
       </div>

@@ -1,0 +1,222 @@
+// src/components/WarehouseDashboardCard.jsx
+// Summary card for your existing dashboard - replaces current warehouse section
+
+import React, { useState, useEffect } from 'react';
+import { Package, Plus, Eye, ArrowRight, Clock, CheckCircle, AlertCircle } from 'lucide-react';
+import { warehouseService } from '../lib/warehouseService';
+
+const WarehouseDashboardCard = ({ userId, onNavigateToFull }) => {
+  const [stats, setStats] = useState({});
+  const [recentReceipts, setRecentReceipts] = useState([]);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    loadDashboardData();
+  }, [userId]);
+
+  const loadDashboardData = async () => {
+    try {
+      setLoading(true);
+      const [statsData, receiptsData] = await Promise.all([
+        warehouseService.getDashboardStats(userId),
+        warehouseService.getReceipts(userId, 3) // Get latest 3 for dashboard
+      ]);
+      
+      setStats(statsData);
+      setRecentReceipts(receiptsData);
+    } catch (error) {
+      console.error('Error loading warehouse dashboard data:', error);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const StatusIcon = ({ status }) => {
+    const icons = {
+      received: CheckCircle,
+      processing: Clock,
+      stored: Package,
+      ready_for_release: AlertCircle,
+      delivered: CheckCircle
+    };
+    const colors = {
+      received: 'text-blue-500',
+      processing: 'text-yellow-500',
+      stored: 'text-green-500',
+      ready_for_release: 'text-orange-500',
+      delivered: 'text-purple-500'
+    };
+    
+    const Icon = icons[status] || Clock;
+    return <Icon className={`w-3 h-3 ${colors[status] || 'text-gray-500'}`} />;
+  };
+
+  if (loading) {
+    return (
+      <div className="bg-white rounded-lg shadow-sm p-6">
+        <div className="animate-pulse space-y-4">
+          <div className="flex items-center justify-between">
+            <div className="h-5 bg-gray-200 rounded w-32"></div>
+            <div className="h-8 bg-gray-200 rounded w-20"></div>
+          </div>
+          <div className="grid grid-cols-4 gap-3">
+            {[1, 2, 3, 4].map(i => (
+              <div key={i} className="h-12 bg-gray-200 rounded"></div>
+            ))}
+          </div>
+          <div className="space-y-2">
+            {[1, 2, 3].map(i => (
+              <div key={i} className="h-16 bg-gray-200 rounded"></div>
+            ))}
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  return (
+    <div className="bg-white rounded-lg shadow-sm p-6">
+      {/* Header */}
+      <div className="flex items-center justify-between mb-4">
+        <h3 className="font-semibold text-gray-900 flex items-center">
+          <Package className="w-5 h-5 mr-2 text-blue-600" />
+          Warehouse Receipts
+        </h3>
+        <div className="flex items-center space-x-2">
+          <button
+            onClick={() => onNavigateToFull && onNavigateToFull('create')}
+            className="flex items-center space-x-1 px-3 py-1 bg-blue-600 text-white rounded-md hover:bg-blue-700 text-sm"
+          >
+            <Plus className="w-3 h-3" />
+            <span>New</span>
+          </button>
+          <button
+            onClick={() => onNavigateToFull && onNavigateToFull('view')}
+            className="flex items-center space-x-1 px-3 py-1 border border-gray-300 text-gray-700 rounded-md hover:bg-gray-50 text-sm"
+          >
+            <Eye className="w-3 h-3" />
+            <span>View All</span>
+          </button>
+        </div>
+      </div>
+
+      {/* Quick Stats */}
+      <div className="grid grid-cols-4 gap-3 mb-4">
+        <div className="text-center p-3 bg-blue-50 rounded-lg">
+          <div className="text-xl font-bold text-blue-600">
+            {stats.total_receipts || 0}
+          </div>
+          <div className="text-xs text-gray-600">Total</div>
+        </div>
+        <div className="text-center p-3 bg-green-50 rounded-lg">
+          <div className="text-xl font-bold text-green-600">
+            {stats.active_receipts || 0}
+          </div>
+          <div className="text-xs text-gray-600">Active</div>
+        </div>
+        <div className="text-center p-3 bg-orange-50 rounded-lg">
+          <div className="text-xl font-bold text-orange-600">
+            {stats.ready_for_release || 0}
+          </div>
+          <div className="text-xs text-gray-600">Ready</div>
+        </div>
+        <div className="text-center p-3 bg-purple-50 rounded-lg">
+          <div className="text-xl font-bold text-purple-600">
+            {stats.total_pieces || 0}
+          </div>
+          <div className="text-xs text-gray-600">Pieces</div>
+        </div>
+      </div>
+
+      {/* Recent Receipts */}
+      <div className="space-y-3">
+        <div className="flex items-center justify-between">
+          <h4 className="text-sm font-medium text-gray-700">Recent Activity</h4>
+          {recentReceipts.length > 3 && (
+            <button
+              onClick={() => onNavigateToFull && onNavigateToFull('view')}
+              className="text-xs text-blue-600 hover:text-blue-800 flex items-center"
+            >
+              View all <ArrowRight className="w-3 h-3 ml-1" />
+            </button>
+          )}
+        </div>
+
+        {recentReceipts.length === 0 ? (
+          <div className="text-center py-6 text-gray-500">
+            <Package className="w-8 h-8 mx-auto mb-2 text-gray-300" />
+            <p className="text-sm">No warehouse receipts yet</p>
+            <button
+              onClick={() => onNavigateToFull && onNavigateToFull('create')}
+              className="text-xs text-blue-600 hover:text-blue-800 mt-1"
+            >
+              Create your first receipt
+            </button>
+          </div>
+        ) : (
+          <div className="space-y-2">
+            {recentReceipts.map((receipt) => (
+              <div 
+                key={receipt.id} 
+                className="border border-gray-200 rounded-lg p-3 hover:bg-gray-50 cursor-pointer transition-colors"
+                onClick={() => onNavigateToFull && onNavigateToFull('view', receipt.id)}
+              >
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center space-x-3">
+                    <StatusIcon status={receipt.status} />
+                    <div className="min-w-0 flex-1">
+                      <div className="text-sm font-medium text-gray-900 truncate">
+                        {receipt.receipt_number}
+                      </div>
+                      <div className="text-xs text-gray-500 truncate">
+                        {receipt.shipper_name} → {receipt.consignee_name}
+                      </div>
+                    </div>
+                  </div>
+                  <div className="flex items-center space-x-2 text-xs text-gray-500">
+                    <span>{receipt.total_pieces} pcs</span>
+                    <span>•</span>
+                    <span>{receipt.total_weight_lb} lbs</span>
+                  </div>
+                </div>
+                <div className="mt-2 flex items-center justify-between text-xs">
+                  <span className="text-gray-500">
+                    {receipt.carrier_name}
+                  </span>
+                  <span className="text-gray-400">
+                    {new Date(receipt.received_date).toLocaleDateString()}
+                  </span>
+                </div>
+              </div>
+            ))}
+          </div>
+        )}
+      </div>
+
+      {/* Footer - Quick Actions */}
+      {stats.total_receipts > 0 && (
+        <div className="mt-4 pt-4 border-t border-gray-200">
+          <div className="flex items-center justify-between text-xs text-gray-500">
+            <div className="flex items-center space-x-4">
+              <span>
+                {stats.total_weight || 0} lbs total
+              </span>
+              <span>•</span>
+              <span>
+                {stats.active_receipts || 0} active
+              </span>
+            </div>
+            <button
+              onClick={() => onNavigateToFull && onNavigateToFull('manage')}
+              className="text-blue-600 hover:text-blue-800 font-medium"
+            >
+              Manage All →
+            </button>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+};
+
+export default WarehouseDashboardCard;

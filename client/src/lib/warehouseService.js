@@ -6,15 +6,53 @@ import { supabase } from './supabase'; // Your existing Supabase client
 export const warehouseService = {
   // Get warehouse receipts using the new summary view
   async getReceipts(userId, limit = 10) {
-    const { data, error } = await supabase
-      .from('warehouse_receipt_summary')
-      .select('*')
-      .eq('user_id', userId)
-      .order('received_date', { ascending: false })
-      .limit(limit);
-    
-    if (error) throw error;
-    return data;
+    try {
+      const { data, error } = await supabase
+        .from('warehouse_receipt_summary')
+        .select('*')
+        .eq('user_id', userId)
+        .order('received_date', { ascending: false })
+        .limit(limit);
+      
+      if (error) {
+        // If summary view doesn't exist, use base table
+        console.warn('Summary view not found, using base warehouse_receipts table');
+        return await this.getFallbackReceipts(userId, limit);
+      }
+      return data;
+    } catch (error) {
+      console.warn('Summary view query failed, using fallback');
+      return await this.getFallbackReceipts(userId, limit);
+    }
+  },
+
+  // Fallback receipts from base table
+  async getFallbackReceipts(userId, limit = 10) {
+    try {
+      const { data, error } = await supabase
+        .from('warehouse_receipts')
+        .select(`
+          *,
+          receipt_number:wr_number,
+          status
+        `)
+        .eq('user_id', userId)
+        .order('received_date', { ascending: false })
+        .limit(limit);
+
+      if (error) throw error;
+
+      // Add derived fields to match summary view structure
+      return data?.map(receipt => ({
+        ...receipt,
+        receipt_number: receipt.wr_number,
+        attachment_count: 0, // Will be updated when attachments are implemented
+        status: receipt.status || 'received'
+      })) || [];
+    } catch (error) {
+      console.error('Fallback receipts query failed:', error);
+      return [];
+    }
   },
 
   // Get single receipt with attachments
@@ -132,11 +170,55 @@ export const warehouseService = {
 
   // Get dashboard analytics using new function
   async getDashboardStats(userId) {
-    const { data, error } = await supabase
-      .rpc('get_warehouse_analytics', { user_uuid: userId });
+    try {
+      const { data, error } = await supabase
+        .rpc('get_warehouse_analytics', { user_uuid: userId });
 
-    if (error) throw error;
-    return data;
+      if (error) {
+        // If analytics function doesn't exist, calculate basic stats manually
+        console.warn('Analytics function not found, using fallback calculation');
+        return await this.getFallbackStats(userId);
+      }
+      return data;
+    } catch (error) {
+      console.warn('Analytics function failed, using fallback calculation');
+      return await this.getFallbackStats(userId);
+    }
+  },
+
+  // Fallback stats calculation
+  async getFallbackStats(userId) {
+    try {
+      const { data: receipts, error } = await supabase
+        .from('warehouse_receipts')
+        .select('*')
+        .eq('user_id', userId);
+
+      if (error) throw error;
+
+      const totalReceipts = receipts?.length || 0;
+      const activeReceipts = receipts?.filter(r => r.status !== 'delivered').length || 0;
+      const readyForRelease = receipts?.filter(r => r.status === 'ready_for_release').length || 0;
+      const totalPieces = receipts?.reduce((sum, r) => sum + (r.total_pieces || 0), 0) || 0;
+      const totalWeight = receipts?.reduce((sum, r) => sum + (r.total_weight_lb || 0), 0) || 0;
+
+      return {
+        total_receipts: totalReceipts,
+        active_receipts: activeReceipts,
+        ready_for_release: readyForRelease,
+        total_pieces: totalPieces,
+        total_weight: totalWeight
+      };
+    } catch (error) {
+      console.error('Fallback stats calculation failed:', error);
+      return {
+        total_receipts: 0,
+        active_receipts: 0,
+        ready_for_release: 0,
+        total_pieces: 0,
+        total_weight: 0
+      };
+    }
   },
 
   // Update receipt status
