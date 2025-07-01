@@ -6,7 +6,6 @@ import { TooltipProvider } from "@/components/ui/tooltip";
 import { AuthProvider, useAuth } from "@/contexts/AuthContext";
 import Login from "@/pages/login";
 import Dashboard from "@/pages/dashboard";
-import WarehouseManagement from "@/pages/warehouse-management";
 import { Loader2 } from "lucide-react";
 
 function AppRouter() {
@@ -30,7 +29,6 @@ function AppRouter() {
   return (
     <Switch>
       <Route path="/" component={Dashboard} />
-      <Route path="/warehouse" component={WarehouseManagement} />
       <Route component={Dashboard} />
     </Switch>
   );

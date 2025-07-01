@@ -78,24 +78,7 @@ export const warehouseReceipts = pgTable("warehouse_receipts", {
   unit: text("unit").notNull(), // 'Pallets', 'Crates', 'Boxes'
   category: text("category").notNull(),
   status: text("status").notNull(), // 'received', 'processed', 'shipped'
-  supplierName: text("supplier_name"),
-  receivedDate: timestamp("received_date"),
-  inspectionNotes: text("inspection_notes"),
-  warehouseLocation: text("warehouse_location"),
-  totalValue: numeric("total_value", { precision: 10, scale: 2 }),
   userId: uuid("user_id").references(() => users.id).notNull(),
-  createdAt: timestamp("created_at").defaultNow().notNull(),
-});
-
-export const warehouseReceiptAttachments = pgTable("warehouse_receipt_attachments", {
-  id: serial("id").primaryKey(),
-  warehouseReceiptId: integer("warehouse_receipt_id").references(() => warehouseReceipts.id).notNull(),
-  fileName: text("file_name").notNull(),
-  fileUrl: text("file_url").notNull(),
-  fileSize: integer("file_size"), // in bytes
-  fileType: text("file_type").notNull(), // MIME type
-  attachmentType: text("attachment_type").notNull(), // 'invoice', 'packing_list', 'photo', 'document'
-  uploadedBy: uuid("uploaded_by").references(() => users.id).notNull(),
   createdAt: timestamp("created_at").defaultNow().notNull(),
 });
 
@@ -154,11 +137,6 @@ export const insertWarehouseReceiptSchema = createInsertSchema(warehouseReceipts
   createdAt: true,
 });
 
-export const insertWarehouseReceiptAttachmentSchema = createInsertSchema(warehouseReceiptAttachments).omit({
-  id: true,
-  createdAt: true,
-});
-
 export const insertAiInsightSchema = createInsertSchema(aiInsights).omit({
   id: true,
   createdAt: true,
@@ -192,8 +170,6 @@ export type Consolidation = typeof consolidations.$inferSelect;
 export type InsertConsolidation = z.infer<typeof insertConsolidationSchema>;
 export type WarehouseReceipt = typeof warehouseReceipts.$inferSelect;
 export type InsertWarehouseReceipt = z.infer<typeof insertWarehouseReceiptSchema>;
-export type WarehouseReceiptAttachment = typeof warehouseReceiptAttachments.$inferSelect;
-export type InsertWarehouseReceiptAttachment = z.infer<typeof insertWarehouseReceiptAttachmentSchema>;
 export type AiInsight = typeof aiInsights.$inferSelect;
 export type InsertAiInsight = z.infer<typeof insertAiInsightSchema>;
 export type TrackingEvent = typeof trackingEvents.$inferSelect;
