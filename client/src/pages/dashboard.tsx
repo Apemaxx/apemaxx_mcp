@@ -1,4 +1,5 @@
 import { UserMenu } from '@/components/dashboard/user-menu';
+import { ProfitUpload } from '@/components/dashboard/profit-upload';
 import { KPIMetrics } from '@/components/dashboard/kpi-metrics';
 import { QuickActions } from '@/components/dashboard/quick-actions';
 import { ConsolidationPlan } from '@/components/dashboard/consolidation-plan';
@@ -16,7 +17,10 @@ export default function Dashboard() {
           <h1 className="text-3xl font-bold text-gray-900">Dashboard: Logistics Command Center</h1>
           <p className="text-gray-600 mt-1">Welcome back! Here is your AI-powered overview for today.</p>
         </div>
-        <UserMenu />
+        <div className="flex items-center gap-3">
+          <ProfitUpload />
+          <UserMenu />
+        </div>
       </header>
 
       {/* Main Grid */}

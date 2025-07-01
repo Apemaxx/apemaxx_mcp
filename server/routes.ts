@@ -20,13 +20,12 @@ const authenticateToken = async (req: any, res: any, next: any) => {
 
   try {
     const decoded = jwt.verify(token, JWT_SECRET) as { userId: string };
-    const user = await storage.getUser(decoded.userId);
-    if (!user) {
-      return res.status(401).json({ message: 'Invalid token' });
-    }
-    req.user = user;
+    
+    // For Supabase users, we just trust our JWT and use the userId
+    req.user = { id: decoded.userId, email: null };
     next();
   } catch (error) {
+    console.error('Token verification error:', error);
     return res.status(403).json({ message: 'Invalid token' });
   }
 };
