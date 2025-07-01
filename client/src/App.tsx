@@ -8,9 +8,22 @@ import Login from "@/pages/login";
 import Dashboard from "@/pages/dashboard";
 import WarehouseManagement from "@/pages/warehouse-management";
 import { Loader2 } from "lucide-react";
+import { useEffect } from "react";
+import { initializeAuthBridge } from "@/lib/auth-bridge";
 
 function AppRouter() {
   const { user, loading } = useAuth();
+
+  // Initialize auth bridge when user is authenticated
+  useEffect(() => {
+    if (user && !loading) {
+      initializeAuthBridge().then((success) => {
+        if (success) {
+          console.log('Authentication bridge initialized successfully');
+        }
+      });
+    }
+  }, [user, loading]);
 
   if (loading) {
     return (

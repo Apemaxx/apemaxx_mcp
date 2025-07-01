@@ -96,6 +96,36 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Exchange Supabase token for JWT
+  app.post("/api/auth/supabase-token", async (req, res) => {
+    try {
+      const { supabaseToken } = req.body;
+      
+      if (!supabaseToken) {
+        return res.status(400).json({ message: "Supabase token required" });
+      }
+
+      // Verify the Supabase token and get user
+      const { data: { user }, error } = await supabase.auth.getUser(supabaseToken);
+
+      if (error || !user) {
+        console.error("Supabase token verification error:", error?.message);
+        return res.status(401).json({ message: "Invalid Supabase token" });
+      }
+
+      // Generate JWT for our app
+      const token = jwt.sign({ userId: user.id, email: user.email }, JWT_SECRET, { expiresIn: '24h' });
+
+      res.json({
+        user: { id: user.id, email: user.email },
+        token,
+      });
+    } catch (error) {
+      console.error("Token exchange error:", error);
+      res.status(400).json({ message: "Token exchange failed" });
+    }
+  });
+
   app.get("/api/auth/me", authenticateToken, async (req: any, res) => {
     try {
       const profile = await storage.getProfile(req.user.id);
