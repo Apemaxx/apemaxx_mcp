@@ -1,10 +1,10 @@
 import { useState, useEffect } from 'react';
+import { useQuery } from '@tanstack/react-query';
 import { useAuth } from '@/components/auth-provider';
 import { Button } from '@/components/ui/button';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { User, ChevronDown, Settings, Bell, LogOut } from 'lucide-react';
 import ProfileSettingsV2 from '@/components/dashboard/profile-settings-v2';
-import { supabase } from '@/lib/supabase';
 
 interface ProfileData {
   id: string;
@@ -17,40 +17,13 @@ interface ProfileData {
 export function UserMenu() {
   const [isOpen, setIsOpen] = useState(false);
   const [showProfileModal, setShowProfileModal] = useState(false);
-  const [profile, setProfile] = useState<ProfileData | null>(null);
-  const [loading, setLoading] = useState(false);
   const { user, logout } = useAuth();
 
-  // Load profile data when component mounts or user changes
-  useEffect(() => {
-    if (user?.id) {
-      loadProfile();
-    }
-  }, [user?.id]);
-
-  const loadProfile = async () => {
-    try {
-      setLoading(true);
-      const { data, error } = await supabase
-        .from('profiles')
-        .select('id, name, email, avatar_url, job_title')
-        .eq('user_id', user?.id)
-        .single();
-
-      if (error && error.code !== 'PGRST116') {
-        console.error('Error loading profile:', error);
-        return;
-      }
-
-      if (data) {
-        setProfile(data);
-      }
-    } catch (error) {
-      console.error('Error loading profile:', error);
-    } finally {
-      setLoading(false);
-    }
-  };
+  // Load profile data using React Query and our backend API
+  const { data: profile, refetch: refetchProfile } = useQuery<ProfileData>({
+    queryKey: ['/api/profile'],
+    enabled: !!user?.id,
+  });
 
   const getDisplayName = () => {
     if (profile?.name) return profile.name;
@@ -72,7 +45,7 @@ export function UserMenu() {
 
   const handleProfileUpdate = () => {
     // Reload profile after update
-    loadProfile();
+    refetchProfile();
   };
 
   if (!user) return null;

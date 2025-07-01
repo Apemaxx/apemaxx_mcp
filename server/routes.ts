@@ -244,6 +244,45 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Profile API endpoints
+  app.get("/api/profile", authenticateToken, async (req: any, res) => {
+    try {
+      let profile = await storage.getProfile(req.user.id);
+      
+      // Create profile if it doesn't exist
+      if (!profile) {
+        const newProfile = {
+          userId: req.user.id,
+          name: 'Flavio Campos', // Default from auth metadata
+          email: req.user.email,
+          phone: '19546693524',
+          company: 'APE Global',
+          jobTitle: 'Operations Manager',
+          bio: 'Logistics operations expert specializing in freight management and supply chain optimization.',
+          location: 'Miami, FL',
+          website: 'https://apeglobal.io',
+          avatarUrl: null,
+        };
+        profile = await storage.createProfile(newProfile);
+      }
+      
+      res.json(profile);
+    } catch (error) {
+      console.error("Profile fetch error:", error);
+      res.status(500).json({ message: "Failed to fetch profile" });
+    }
+  });
+
+  app.put("/api/profile", authenticateToken, async (req: any, res) => {
+    try {
+      const updatedProfile = await storage.updateProfile(req.user.id, req.body);
+      res.json(updatedProfile);
+    } catch (error) {
+      console.error("Profile update error:", error);
+      res.status(500).json({ message: "Failed to update profile" });
+    }
+  });
+
   // Create new booking
   app.post("/api/bookings", authenticateToken, async (req: any, res) => {
     try {
