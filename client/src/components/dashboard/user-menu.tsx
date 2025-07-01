@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { useAuth } from '@/components/auth-provider';
 import { Button } from '@/components/ui/button';
-import { Avatar, AvatarFallback } from '@/components/ui/avatar';
+import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { User, ChevronDown, Settings, Bell, LogOut } from 'lucide-react';
 import { ProfileSettings } from '@/components/dashboard/profile-settings';
@@ -9,7 +9,7 @@ import { ProfileSettings } from '@/components/dashboard/profile-settings';
 export function UserMenu() {
   const [isOpen, setIsOpen] = useState(false);
   const [showProfileModal, setShowProfileModal] = useState(false);
-  const { user, logout } = useAuth();
+  const { user, profile, logout } = useAuth();
 
   const handleLogout = async () => {
     logout();
@@ -22,10 +22,20 @@ export function UserMenu() {
   };
 
   const getDisplayName = () => {
+    if (profile?.name) {
+      return profile.name;
+    }
     return user?.email || 'User';
   };
 
   const getInitials = () => {
+    if (profile?.name) {
+      const names = profile.name.split(' ');
+      if (names.length >= 2) {
+        return `${names[0].charAt(0)}${names[names.length - 1].charAt(0)}`.toUpperCase();
+      }
+      return profile.name.charAt(0).toUpperCase();
+    }
     return user?.email?.charAt(0).toUpperCase() || 'U';
   };
 
@@ -38,12 +48,18 @@ export function UserMenu() {
           className="flex items-center gap-3 bg-white p-2 rounded-lg shadow-sm border border-gray-200 hover:bg-gray-50"
         >
           <Avatar className="w-8 h-8">
+            {profile?.avatar_url && (
+              <AvatarImage src={profile.avatar_url} alt="Profile picture" />
+            )}
             <AvatarFallback className="bg-primary-custom text-white text-sm">
               {getInitials()}
             </AvatarFallback>
           </Avatar>
           <div className="text-left">
             <div className="text-sm font-medium text-gray-700">{getDisplayName()}</div>
+            {profile?.job_title && (
+              <div className="text-xs text-gray-500">{profile.job_title}</div>
+            )}
           </div>
           <ChevronDown className="w-4 h-4 text-gray-400" />
         </Button>
