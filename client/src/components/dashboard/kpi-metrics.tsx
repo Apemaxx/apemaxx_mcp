@@ -1,7 +1,10 @@
-import { useQuery } from '@tanstack/react-query';
+import { useQuery, useMutation } from '@tanstack/react-query';
 import { fetchAPI } from '@/lib/api';
 import { Card, CardContent } from '@/components/ui/card';
 import { Skeleton } from '@/components/ui/skeleton';
+import { Button } from '@/components/ui/button';
+import { apiRequest, queryClient } from '@/lib/queryClient';
+import { Plus } from 'lucide-react';
 
 interface KPIMetrics {
   shipmentsInTransit: number;
@@ -15,6 +18,22 @@ export function KPIMetrics() {
     queryKey: ['/api/kpi-metrics'],
     refetchInterval: 30000, // Refresh every 30 seconds
   });
+
+  const initializeSampleDataMutation = useMutation({
+    mutationFn: () => apiRequest('/api/initialize-sample-data', 'POST', {}),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['/api/kpi-metrics'] });
+      queryClient.invalidateQueries({ queryKey: ['/api/shipments'] });
+      queryClient.invalidateQueries({ queryKey: ['/api/bookings'] });
+      queryClient.invalidateQueries({ queryKey: ['/api/ai-insights'] });
+    },
+  });
+
+  // Check if user has no data (all metrics are 0)
+  const hasNoData = metrics && 
+    metrics.shipmentsInTransit === 0 && 
+    metrics.pendingBookings === 0 && 
+    metrics.monthlyFreightCost === 0;
 
   if (isLoading) {
     return (
