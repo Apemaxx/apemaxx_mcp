@@ -148,6 +148,18 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // PATCH endpoint for profile updates (including profit settings)
+  app.patch("/api/profile", authenticateToken, async (req: any, res) => {
+    try {
+      const profileData = insertProfileSchema.partial().parse(req.body);
+      const profile = await storage.updateProfile(req.user.id, profileData);
+      res.json(profile);
+    } catch (error) {
+      console.error("Update profile error:", error);
+      res.status(500).json({ message: "Failed to update profile" });
+    }
+  });
+
   // Dashboard data routes
   app.get("/api/kpi-metrics", authenticateToken, async (req: any, res) => {
     try {

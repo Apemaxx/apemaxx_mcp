@@ -1,0 +1,1389 @@
+# APE MAXX Logistics Platform
+## Complete Product Requirements Document (PRD) & Technical Specification
+
+---
+
+## 📋 Table of Contents
+
+1. [Executive Summary](#executive-summary)
+2. [Product Overview](#product-overview)
+3. [User Personas & Stories](#user-personas--stories)
+4. [Feature Requirements](#feature-requirements)
+5. [Database Schema](#database-schema)
+6. [User Flow & Journey Maps](#user-flow--journey-maps)
+7. [Technical Architecture](#technical-architecture)
+8. [Dependencies & Libraries](#dependencies--libraries)
+9. [API Specifications](#api-specifications)
+10. [Implementation Roadmap](#implementation-roadmap)
+
+---
+
+## 🎯 Executive Summary
+
+**APE MAXX Logistics Platform** is a comprehensive freight management system designed to streamline Less Than Container Load (LCL) operations, freight quoting, shipment tracking, and warehouse management. The platform integrates with TAI API for real-time freight operations and provides AI-powered assistance for logistics operations.
+
+### Key Value Propositions
+- **Real-time Freight Quoting** via TAI API integration
+- **End-to-end LCL Management** from booking to delivery
+- **AI-Powered Chat Assistant** for logistics support
+- **Warehouse Receipt Processing** with document management
+- **CFS Tracking & Management** for container freight stations
+- **Multi-carrier Integration** for competitive pricing
+
+---
+
+## 🚀 Product Overview
+
+### Core Modules
+
+#### 1. **Dashboard & Analytics**
+- Real-time KPI visualization
+- Shipment status overview
+- Financial performance metrics
+- Operational efficiency tracking
+
+#### 2. **Freight Quoting System**
+- Multi-carrier rate comparison
+- TAI API integration for real-time pricing
+- Accessorial management
+- Quote-to-booking conversion
+
+#### 3. **LCL Management**
+- Booking creation and management
+- Consolidation tracking
+- Commodity management
+- Shipper/consignee management
+
+#### 4. **Warehouse Operations**
+- Warehouse receipt processing
+- CFS location management
+- Cargo tracking and positioning
+- Document upload and management
+
+#### 5. **Shipment Tracking**
+- Real-time tracking updates
+- Multi-carrier tracking integration
+- Status notifications
+- Delivery confirmation
+
+#### 6. **AI Chat Assistant**
+- Multi-provider AI integration (OpenAI, Claude, Gemini)
+- Logistics-specific knowledge base
+- Natural language query processing
+- Automated task suggestions
+
+#### 7. **Address Management**
+- Global address book
+- Address validation
+- Geolocation services
+- Business type classification
+
+---
+
+## 👥 User Personas & Stories
+
+### **Primary Persona: Logistics Coordinator (Sarah)**
+- **Role**: Day-to-day operations management
+- **Goals**: Efficient booking, tracking, and customer service
+- **Pain Points**: Manual processes, scattered information, poor visibility
+
+**User Stories:**
+- As a logistics coordinator, I want to get instant freight quotes so I can provide competitive pricing to customers
+- As a logistics coordinator, I want to track all shipments in one dashboard so I can proactively manage deliveries
+- As a logistics coordinator, I want AI assistance so I can quickly answer customer questions
+
+### **Secondary Persona: Warehouse Manager (Mike)**
+- **Role**: Warehouse operations and CFS management
+- **Goals**: Accurate cargo tracking, efficient processing
+- **Pain Points**: Paper-based receipts, manual data entry
+
+**User Stories:**
+- As a warehouse manager, I want to process warehouse receipts digitally so I can reduce errors and processing time
+- As a warehouse manager, I want to track cargo location so I can optimize warehouse space
+- As a warehouse manager, I want to upload documents so I can maintain complete records
+
+### **Secondary Persona: Customer Service Rep (Lisa)**
+- **Role**: Customer interaction and support
+- **Goals**: Quick response to customer inquiries
+- **Pain Points**: Scattered information, slow response times
+
+**User Stories:**
+- As a customer service rep, I want to quickly access shipment information so I can provide instant updates to customers
+- As a customer service rep, I want AI chat assistance so I can handle complex logistics questions
+- As a customer service rep, I want to create quotes quickly so I can respond to customer requests promptly
+
+---
+
+## 🔧 Feature Requirements
+
+### **MVP Features (Phase 1)**
+
+#### **1. User Management & Authentication**
+- User registration and login
+- Role-based access control (Admin, Coordinator, Warehouse, Customer Service)
+- Profile management with API key storage
+- Password reset and security
+
+#### **2. Core Dashboard**
+- Real-time KPI cards (Active Shipments, Pending Quotes, Revenue)
+- Recent activities feed
+- Quick action buttons
+- Responsive design for mobile/tablet
+
+#### **3. Freight Quoting**
+- Quote request form with commodity details
+- TAI API integration for real-time rates
+- Multi-carrier comparison (top 3 rates)
+- Quote management (save, edit, send to customer)
+- Accessorial selection and pricing
+
+#### **4. Basic LCL Management**
+- Create LCL bookings
+- Shipper/consignee information management
+- Commodity tracking
+- Basic status updates
+
+#### **5. Address Book**
+- Add/edit/delete contacts
+- Business type classification
+- Address validation
+- Search and filter functionality
+
+### **Advanced Features (Phase 2)**
+
+#### **6. Warehouse Management**
+- Digital warehouse receipt processing
+- Document upload and management
+- CFS location tracking
+- Cargo positioning system
+
+#### **7. AI Chat Assistant**
+- Multi-provider integration (OpenAI, Claude, Gemini)
+- Logistics knowledge base
+- Natural language processing
+- Quick action suggestions
+
+#### **8. Advanced Tracking**
+- Real-time shipment tracking
+- Automated status updates
+- Customer notifications
+- Delivery confirmation
+
+#### **9. Reporting & Analytics**
+- Custom report generation
+- Performance metrics
+- Financial reporting
+- Data export capabilities
+
+### **Premium Features (Phase 3)**
+
+#### **10. Integration Hub**
+- EDI integration
+- Third-party API connections
+- Webhook management
+- Data synchronization
+
+#### **11. Mobile Application**
+- Native iOS/Android apps
+- Offline capability
+- Push notifications
+- Barcode/QR code scanning
+
+#### **12. Advanced AI Features**
+- Predictive analytics
+- Automated decision making
+- Smart routing optimization
+- Anomaly detection
+
+---
+
+## 🗄️ Database Schema
+
+### **Core Tables**
+
+#### **1. User Management**
+```sql
+-- Profiles (extends Supabase auth.users)
+CREATE TABLE profiles (
+    id UUID PRIMARY KEY REFERENCES auth.users(id),
+    email TEXT,
+    name TEXT,
+    company TEXT,
+    phone TEXT,
+    language TEXT DEFAULT 'en',
+    llm_api_key TEXT, -- For AI providers
+    created_at TIMESTAMPTZ DEFAULT NOW(),
+    updated_at TIMESTAMPTZ DEFAULT NOW(),
+    avatar_url TEXT,
+    bio TEXT,
+    location TEXT,
+    website TEXT,
+    job_title TEXT,
+    organization_id INTEGER REFERENCES organizations(id)
+);
+
+-- Organizations
+CREATE TABLE organizations (
+    id SERIAL PRIMARY KEY,
+    name TEXT NOT NULL,
+    domain TEXT,
+    subscription_plan TEXT DEFAULT 'free',
+    settings JSONB DEFAULT '{}',
+    created_at TIMESTAMPTZ DEFAULT NOW(),
+    updated_at TIMESTAMPTZ DEFAULT NOW()
+);
+```
+
+#### **2. Address Management**
+```sql
+-- Address Book
+CREATE TABLE address_book (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    user_id UUID REFERENCES auth.users(id),
+    company_name TEXT NOT NULL,
+    contact_person TEXT,
+    contact_title TEXT,
+    street_address TEXT,
+    address_line_2 TEXT,
+    city TEXT,
+    state_province TEXT,
+    postal_code TEXT,
+    country TEXT DEFAULT 'US',
+    phone TEXT,
+    fax TEXT,
+    email TEXT,
+    website TEXT,
+    business_type TEXT CHECK (business_type IN ('shipper', 'consignee', 'agent', 'carrier', 'warehouse', 'vendor', 'customer')),
+    tax_id TEXT,
+    firms_code TEXT,
+    notes TEXT,
+    is_active BOOLEAN DEFAULT true,
+    created_at TIMESTAMPTZ DEFAULT NOW(),
+    updated_at TIMESTAMPTZ DEFAULT NOW()
+);
+
+-- Location Cache for performance
+CREATE TABLE location_cache (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    postal_code TEXT,
+    country_code TEXT,
+    city TEXT,
+    state_province TEXT,
+    latitude NUMERIC,
+    longitude NUMERIC,
+    formatted_address TEXT,
+    google_place_id TEXT,
+    region TEXT,
+    cached_at TIMESTAMPTZ DEFAULT NOW(),
+    expires_at TIMESTAMPTZ DEFAULT (NOW() + INTERVAL '30 days')
+);
+```
+
+#### **3. Freight Management**
+```sql
+-- Quotes
+CREATE TABLE quotes (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    user_id UUID REFERENCES auth.users(id),
+    quote_number TEXT UNIQUE NOT NULL,
+    origin TEXT NOT NULL,
+    destination TEXT NOT NULL,
+    service_type TEXT CHECK (service_type IN ('road', 'ocean', 'air', 'cfs', 'parcel')),
+    weight NUMERIC,
+    dimensions TEXT,
+    cargo_type TEXT DEFAULT 'general',
+    estimated_cost NUMERIC,
+    currency TEXT DEFAULT 'USD',
+    valid_until DATE,
+    status TEXT DEFAULT 'active' CHECK (status IN ('active', 'expired', 'booked', 'cancelled')),
+    carrier_quotes JSONB DEFAULT '[]',
+    ai_recommendation JSONB DEFAULT '{}',
+    tai_quote_id TEXT,
+    freight_class INTEGER,
+    accessorials JSONB DEFAULT '[]',
+    selected_carrier TEXT,
+    quote_details JSONB DEFAULT '{}',
+    created_at TIMESTAMPTZ DEFAULT NOW(),
+    updated_at TIMESTAMPTZ DEFAULT NOW()
+);
+
+-- Shipments
+CREATE TABLE shipments (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    user_id UUID REFERENCES auth.users(id),
+    shipment_code TEXT UNIQUE NOT NULL,
+    origin TEXT NOT NULL,
+    destination TEXT NOT NULL,
+    service_type TEXT CHECK (service_type IN ('road', 'ocean', 'air', 'cfs', 'parcel')),
+    status TEXT DEFAULT 'preparing' CHECK (status IN ('preparing', 'in_transit', 'delivered', 'delayed', 'cancelled')),
+    progress INTEGER DEFAULT 0 CHECK (progress >= 0 AND progress <= 100),
+    priority TEXT DEFAULT 'medium' CHECK (priority IN ('low', 'medium', 'high')),
+    weight NUMERIC,
+    dimensions TEXT,
+    estimated_delivery DATE,
+    actual_delivery DATE,
+    cost NUMERIC,
+    currency TEXT DEFAULT 'USD',
+    carrier TEXT,
+    tracking_number TEXT,
+    notes TEXT,
+    tai_shipment_id TEXT,
+    pickup_address JSONB,
+    delivery_address JSONB,
+    shipper_info JSONB,
+    consignee_info JSONB,
+    accessorials JSONB DEFAULT '[]',
+    freight_class INTEGER,
+    created_at TIMESTAMPTZ DEFAULT NOW(),
+    updated_at TIMESTAMPTZ DEFAULT NOW()
+);
+
+-- Tracking Updates
+CREATE TABLE tracking_updates (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    shipment_id UUID REFERENCES shipments(id),
+    status TEXT NOT NULL,
+    location TEXT,
+    description TEXT,
+    timestamp TIMESTAMPTZ DEFAULT NOW(),
+    created_at TIMESTAMPTZ DEFAULT NOW()
+);
+```
+
+#### **4. LCL Management**
+```sql
+-- LCL Bookings Enhanced
+CREATE TABLE lcl_bookings_enhanced (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    booking_number TEXT UNIQUE NOT NULL,
+    user_id UUID REFERENCES auth.users(id),
+    customer_profile_id UUID REFERENCES profiles(id),
+    created_by UUID REFERENCES profiles(id),
+    
+    -- Parties
+    shipper_id UUID REFERENCES address_book(id),
+    consignee_id UUID REFERENCES address_book(id),
+    notify_party_id UUID REFERENCES address_book(id),
+    agent_id UUID REFERENCES address_book(id),
+    
+    -- Routing
+    origin_port TEXT,
+    destination_port TEXT,
+    place_of_receipt TEXT,
+    place_of_delivery TEXT,
+    
+    -- Service Details
+    service_type TEXT DEFAULT 'LCL',
+    estimated_transit_days INTEGER,
+    commodity_description TEXT,
+    total_pieces INTEGER DEFAULT 0,
+    total_weight_kg NUMERIC DEFAULT 0,
+    total_volume_cbm NUMERIC DEFAULT 0,
+    
+    -- Dates
+    booking_date DATE DEFAULT CURRENT_DATE,
+    estimated_departure DATE,
+    estimated_arrival DATE,
+    cut_off_date DATE,
+    
+    -- Commercial
+    freight_terms TEXT CHECK (freight_terms IN ('Prepaid', 'Collect')),
+    payment_terms TEXT,
+    total_charges NUMERIC DEFAULT 0,
+    currency TEXT DEFAULT 'USD',
+    
+    -- Status
+    status TEXT DEFAULT 'draft' CHECK (status IN ('draft', 'confirmed', 'in_transit', 'arrived', 'delivered', 'cancelled')),
+    
+    -- Additional Info
+    special_instructions TEXT,
+    internal_notes TEXT,
+    customer_reference TEXT,
+    tags TEXT[],
+    
+    -- Metadata
+    created_at TIMESTAMPTZ DEFAULT NOW(),
+    updated_at TIMESTAMPTZ DEFAULT NOW(),
+    
+    -- Original shipment reference
+    original_shipment_id UUID REFERENCES shipments(id)
+);
+
+-- LCL Shipments Enhanced
+CREATE TABLE lcl_shipments_enhanced (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    booking_id UUID REFERENCES lcl_bookings_enhanced(id),
+    
+    -- Master BL Information
+    master_bl_number TEXT,
+    house_bl_number TEXT UNIQUE,
+    
+    -- Parties (can override booking parties)
+    shipper_exporter_id UUID REFERENCES address_book(id),
+    consignee_id UUID REFERENCES address_book(id),
+    notify_party_id UUID REFERENCES address_book(id),
+    forwarding_agent_id UUID REFERENCES address_book(id),
+    
+    -- Routing Details
+    port_of_loading TEXT,
+    port_of_discharge TEXT,
+    place_of_receipt TEXT,
+    place_of_delivery TEXT,
+    final_destination TEXT,
+    
+    -- Vessel Information
+    vessel_name TEXT,
+    voyage_number TEXT,
+    container_numbers TEXT[],
+    seal_numbers TEXT[],
+    
+    -- Cargo Details
+    commodity_code TEXT,
+    commodity_description TEXT,
+    packages_count INTEGER,
+    package_type TEXT,
+    gross_weight_kg NUMERIC,
+    net_weight_kg NUMERIC,
+    measurement_cbm NUMERIC,
+    
+    -- Dates
+    etd DATE, -- Estimated Time of Departure
+    eta DATE, -- Estimated Time of Arrival
+    atd DATE, -- Actual Time of Departure
+    ata DATE, -- Actual Time of Arrival
+    
+    -- Commercial Terms
+    freight_charges NUMERIC DEFAULT 0,
+    other_charges NUMERIC DEFAULT 0,
+    total_charges NUMERIC DEFAULT 0,
+    currency TEXT DEFAULT 'USD',
+    freight_payable_at TEXT,
+    
+    -- Status Tracking
+    status TEXT DEFAULT 'booked' CHECK (status IN ('booked', 'loaded', 'departed', 'in_transit', 'arrived', 'discharged', 'cleared', 'delivered')),
+    current_location TEXT,
+    last_update_location TEXT,
+    last_update_timestamp TIMESTAMPTZ,
+    
+    -- Documents
+    bl_released BOOLEAN DEFAULT false,
+    do_released BOOLEAN DEFAULT false, -- Delivery Order
+    customs_cleared BOOLEAN DEFAULT false,
+    
+    -- Additional Information
+    marks_and_numbers TEXT,
+    special_instructions TEXT,
+    hazardous_cargo BOOLEAN DEFAULT false,
+    temperature_controlled BOOLEAN DEFAULT false,
+    
+    -- Metadata
+    created_by UUID REFERENCES profiles(id),
+    created_at TIMESTAMPTZ DEFAULT NOW(),
+    updated_at TIMESTAMPTZ DEFAULT NOW(),
+    
+    -- Reference to original shipment
+    original_shipment_id UUID REFERENCES shipments(id)
+);
+
+-- LCL Tracking Events
+CREATE TABLE lcl_tracking_events_enhanced (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    shipment_id UUID REFERENCES lcl_shipments_enhanced(id),
+    
+    -- Event Details
+    event_type TEXT NOT NULL CHECK (event_type IN ('booking', 'loading', 'departure', 'arrival', 'discharge', 'customs', 'delivery', 'delay', 'damage')),
+    event_description TEXT,
+    event_location TEXT,
+    event_timestamp TIMESTAMPTZ NOT NULL,
+    
+    -- Additional Context
+    vessel_name TEXT,
+    voyage_number TEXT,
+    container_number TEXT,
+    terminal_name TEXT,
+    
+    -- Status Impact
+    impacts_eta BOOLEAN DEFAULT false,
+    new_eta TIMESTAMPTZ,
+    
+    -- Documentation
+    reference_document TEXT,
+    event_code TEXT,
+    
+    -- Metadata
+    created_by UUID REFERENCES profiles(id),
+    created_at TIMESTAMPTZ DEFAULT NOW(),
+    data_source TEXT DEFAULT 'manual' CHECK (data_source IN ('manual', 'api', 'edi', 'webhook'))
+);
+
+-- LCL Documents
+CREATE TABLE lcl_documents_enhanced (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    shipment_id UUID REFERENCES lcl_shipments_enhanced(id),
+    
+    -- Document Details
+    document_type TEXT NOT NULL CHECK (document_type IN ('bill_of_lading', 'commercial_invoice', 'packing_list', 'certificate_of_origin', 'insurance', 'customs_declaration', 'delivery_order', 'arrival_notice', 'other')),
+    document_name TEXT NOT NULL,
+    document_number TEXT,
+    
+    -- File Information
+    file_path TEXT,
+    file_size_bytes INTEGER,
+    mime_type TEXT,
+    file_hash TEXT, -- For integrity verification
+    
+    -- Document Status
+    status TEXT DEFAULT 'draft' CHECK (status IN ('draft', 'pending_approval', 'approved', 'rejected', 'expired')),
+    is_original BOOLEAN DEFAULT false,
+    is_required BOOLEAN DEFAULT false,
+    
+    -- Approval Workflow
+    uploaded_by UUID REFERENCES profiles(id),
+    approved_by UUID REFERENCES profiles(id),
+    approval_date TIMESTAMPTZ,
+    rejection_reason TEXT,
+    
+    -- Metadata
+    created_at TIMESTAMPTZ DEFAULT NOW(),
+    updated_at TIMESTAMPTZ DEFAULT NOW(),
+    expires_at TIMESTAMPTZ,
+    
+    -- Additional Context
+    issuer_name TEXT,
+    issue_date DATE,
+    related_bl_number TEXT,
+    notes TEXT
+);
+```
+
+#### **5. Warehouse Management**
+```sql
+-- Warehouse Receipts
+CREATE TABLE warehouse_receipts (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    user_id UUID REFERENCES auth.users(id),
+    
+    -- Receipt Information
+    WR_receipt_number TEXT UNIQUE NOT NULL,
+    tracking_number TEXT,
+    pro_number TEXT,
+    
+    -- Carrier Information
+    carrier_name TEXT,
+    driver_name TEXT,
+    driver_license TEXT,
+    
+    -- Cargo Details
+    total_pieces INTEGER,
+    total_weight_lbs NUMERIC,
+    total_volume_cft NUMERIC,
+    volumetric_weight_lbs NUMERIC,
+    cargo_description TEXT,
+    
+    -- Location & Processing
+    warehouse_location TEXT,
+    received_by TEXT,
+    signature_captured BOOLEAN DEFAULT false,
+    
+    -- Parties
+    shipper_id UUID REFERENCES address_book(id),
+    consignee_id UUID REFERENCES address_book(id),
+    supplier_id UUID REFERENCES address_book(id),
+    
+    -- Line Items
+    line_items JSONB DEFAULT '[]',
+    
+    -- Status & Dates
+    status TEXT DEFAULT 'received',
+    received_date TIMESTAMPTZ DEFAULT NOW(),
+    
+    -- Financial
+    charges_applied NUMERIC DEFAULT 5.00, -- VLB charges + release fee
+    
+    -- Documents
+    receipt_pdf_url TEXT,
+    delivery_receipt_pdf_url TEXT,
+    signature_image_url TEXT,
+    inspection_photos JSONB DEFAULT '[]',
+    damage_photos JSONB DEFAULT '[]',
+    documents JSONB DEFAULT '[]',
+    
+    -- Additional Information
+    notes TEXT,
+    
+    -- Metadata
+    created_at TIMESTAMPTZ DEFAULT NOW(),
+    updated_at TIMESTAMPTZ DEFAULT NOW()
+);
+
+-- CFS Locations
+CREATE TABLE stg_cfs_locations (
+    id SERIAL PRIMARY KEY,
+    location_name VARCHAR NOT NULL,
+    service_line VARCHAR,
+    street_address VARCHAR,
+    city VARCHAR,
+    state VARCHAR,
+    zip_code VARCHAR,
+    phone_number VARCHAR,
+    
+    -- Facility Details
+    warehouse_sq_feet INTEGER,
+    dock_doors INTEGER,
+    ground_loading_ramps INTEGER,
+    container_parking INTEGER,
+    
+    -- Certifications
+    fda_registered BOOLEAN DEFAULT false,
+    temp_control BOOLEAN DEFAULT false,
+    bonded BOOLEAN DEFAULT false,
+    firms_code VARCHAR,
+    
+    -- Capacity
+    racked_pallet_positions INTEGER,
+    operational_hours VARCHAR,
+    
+    -- Classification
+    region VARCHAR,
+    facility_type VARCHAR,
+    is_primary_cfs BOOLEAN DEFAULT false,
+    
+    -- Metadata
+    created_at TIMESTAMPTZ DEFAULT NOW(),
+    updated_at TIMESTAMPTZ DEFAULT NOW()
+);
+```
+
+#### **6. AI & Communication**
+```sql
+-- Chat History
+CREATE TABLE chat_history (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    user_id UUID REFERENCES auth.users(id),
+    session_id UUID DEFAULT gen_random_uuid(),
+    message_type TEXT CHECK (message_type IN ('user', 'assistant', 'system')),
+    message TEXT NOT NULL,
+    metadata JSONB DEFAULT '{}',
+    created_at TIMESTAMPTZ DEFAULT NOW(),
+    updated_at TIMESTAMPTZ DEFAULT NOW()
+);
+
+-- AI Tasks
+CREATE TABLE ai_tasks (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    user_id UUID REFERENCES auth.users(id),
+    shipment_id UUID REFERENCES shipments(id),
+    quote_id UUID REFERENCES quotes(id),
+    task_type TEXT CHECK (task_type IN ('rate_calculation', 'route_optimization', 'documentation', 'tracking_update', 'compliance_check', 'cost_analysis')),
+    title TEXT NOT NULL,
+    description TEXT,
+    ai_prompt TEXT,
+    ai_response JSONB DEFAULT '{}',
+    priority TEXT DEFAULT 'medium' CHECK (priority IN ('low', 'medium', 'high', 'urgent')),
+    status TEXT DEFAULT 'pending' CHECK (status IN ('pending', 'processing', 'completed', 'failed', 'cancelled')),
+    progress INTEGER DEFAULT 0 CHECK (progress >= 0 AND progress <= 100),
+    scheduled_for TIMESTAMPTZ,
+    completed_at TIMESTAMPTZ,
+    error_message TEXT,
+    created_at TIMESTAMPTZ DEFAULT NOW(),
+    updated_at TIMESTAMPTZ DEFAULT NOW()
+);
+```
+
+#### **7. Configuration & Caching**
+```sql
+-- TAI Configurations
+CREATE TABLE tai_configurations (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    user_id UUID REFERENCES auth.users(id),
+    api_key TEXT NOT NULL,
+    environment TEXT DEFAULT 'production' CHECK (environment IN ('sandbox', 'production')),
+    carrier_preferences JSONB DEFAULT '{}',
+    default_accessorials JSONB DEFAULT '[]',
+    notification_settings JSONB DEFAULT '{}',
+    active BOOLEAN DEFAULT true,
+    created_at TIMESTAMPTZ DEFAULT NOW(),
+    updated_at TIMESTAMPTZ DEFAULT NOW()
+);
+
+-- Carrier Rates Cache
+CREATE TABLE carrier_rates_cache (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    origin_zip TEXT NOT NULL,
+    destination_zip TEXT NOT NULL,
+    weight NUMERIC NOT NULL,
+    dimensions JSONB NOT NULL,
+    freight_class INTEGER,
+    carrier TEXT NOT NULL,
+    service_type TEXT NOT NULL,
+    base_rate NUMERIC NOT NULL,
+    total_rate NUMERIC NOT NULL,
+    transit_days INTEGER,
+    accessorials JSONB DEFAULT '[]',
+    rate_data JSONB NOT NULL,
+    expires_at TIMESTAMPTZ NOT NULL,
+    created_at TIMESTAMPTZ DEFAULT NOW()
+);
+
+-- Accessorials Master
+CREATE TABLE accessorials_master (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    code TEXT UNIQUE NOT NULL,
+    name TEXT NOT NULL,
+    description TEXT,
+    category TEXT CHECK (category IN ('origin', 'destination', 'transit', 'special')),
+    pricing_type TEXT DEFAULT 'fixed' CHECK (pricing_type IN ('fixed', 'percentage', 'weight_based', 'distance_based')),
+    base_price NUMERIC DEFAULT 0,
+    active BOOLEAN DEFAULT true,
+    carrier_specific JSONB DEFAULT '{}',
+    requirements JSONB DEFAULT '{}',
+    created_at TIMESTAMPTZ DEFAULT NOW(),
+    updated_at TIMESTAMPTZ DEFAULT NOW()
+);
+```
+
+#### **8. Activity & Logging**
+```sql
+-- User Activities
+CREATE TABLE user_activities (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    user_id UUID NOT NULL REFERENCES auth.users(id),
+    action TEXT NOT NULL,
+    details JSONB DEFAULT '{}',
+    created_at TIMESTAMPTZ DEFAULT NOW()
+);
+
+-- Sync Logging
+CREATE TABLE xano_sync_log (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    table_name TEXT NOT NULL,
+    record_id UUID NOT NULL,
+    operation TEXT CHECK (operation IN ('create', 'update', 'delete')),
+    xano_endpoint TEXT NOT NULL,
+    request_payload JSONB,
+    response_payload JSONB,
+    status TEXT CHECK (status IN ('success', 'failed', 'retrying')),
+    error_message TEXT,
+    retry_count INTEGER DEFAULT 0,
+    last_retry_at TIMESTAMPTZ,
+    created_at TIMESTAMPTZ DEFAULT NOW()
+);
+```
+
+---
+
+## 🔄 User Flow & Journey Maps
+
+### **Core User Journeys**
+
+#### **Journey 1: Freight Quote to Booking**
+```
+1. LOGIN → Dashboard
+2. CLICK "Get Quote" → Quote Form
+3. ENTER Origin/Destination → Address Validation
+4. ADD Commodities → Freight Class Selection
+5. SELECT Accessorials → Rate Calculation
+6. REVIEW Quotes → Carrier Comparison
+7. SELECT Best Rate → Customer Approval
+8. BOOK Shipment → Confirmation
+9. TRACK Progress → Delivery
+```
+
+#### **Journey 2: LCL Booking Management**
+```
+1. ACCESS LCL Module → Booking Dashboard
+2. CREATE New Booking → Party Selection
+3. ENTER Cargo Details → Commodity Management
+4. SET Routing → Port Selection
+5. CONFIRM Commercial Terms → Rate Agreement
+6. SUBMIT Booking → Processing
+7. TRACK Consolidation → Container Loading
+8. MONITOR Transit → Arrival Updates
+9. ARRANGE Delivery → Final Confirmation
+```
+
+#### **Journey 3: Warehouse Receipt Processing**
+```
+1. RECEIVE Cargo → Digital Receipt
+2. SCAN/ENTER Details → System Entry
+3. CAPTURE Photos → Document Upload
+4. CALCULATE Charges → VLB Processing
+5. GENERATE Receipt → PDF Creation
+6. NOTIFY Parties → Communication
+7. TRACK Location → CFS Management
+8. PROCESS Release → Delivery Authorization
+```
+
+#### **Journey 4: AI Chat Assistance**
+```
+1. OPEN Chat → AI Assistant
+2. ASK Question → Natural Language Processing
+3. RECEIVE Answer → Knowledge Base Query
+4. REQUEST Action → System Integration
+5. CONFIRM Details → Validation
+6. EXECUTE Task → Automated Processing
+7. RECEIVE Update → Status Notification
+```
+
+### **Detailed User Flow Diagrams**
+
+#### **Freight Quoting Flow**
+```mermaid
+flowchart TD
+    A[User Login] --> B[Dashboard]
+    B --> C[Get Quote Button]
+    C --> D[Quote Form]
+    D --> E{Address Valid?}
+    E -->|No| F[Address Correction]
+    F --> D
+    E -->|Yes| G[Commodity Entry]
+    G --> H[Freight Class Selection]
+    H --> I[Accessorial Selection]
+    I --> J[TAI API Call]
+    J --> K[Rate Comparison]
+    K --> L[Customer Approval]
+    L --> M{Approved?}
+    M -->|No| N[Modify Quote]
+    N --> G
+    M -->|Yes| O[Create Booking]
+    O --> P[Confirmation]
+    P --> Q[Tracking Setup]
+```
+
+#### **LCL Management Flow**
+```mermaid
+flowchart TD
+    A[LCL Dashboard] --> B[New Booking]
+    B --> C[Select Parties]
+    C --> D[Enter Cargo Details]
+    D --> E[Route Planning]
+    E --> F[Commercial Terms]
+    F --> G[Booking Confirmation]
+    G --> H[Consolidation]
+    H --> I[Container Loading]
+    I --> J[Departure]
+    J --> K[Transit Tracking]
+    K --> L[Arrival]
+    L --> M[Discharge]
+    M --> N[Customs Clearance]
+    N --> O[Final Delivery]
+```
+
+---
+
+## 🏗️ Technical Architecture
+
+### **Frontend Architecture**
+```
+React 18 Application
+├── Components/
+│   ├── Dashboard/
+│   ├── Quotes/
+│   ├── LCL/
+│   ├── Warehouse/
+│   ├── Tracking/
+│   ├── Chat/
+│   └── Common/
+├── Hooks/
+├── Context/
+├── Services/
+├── Utils/
+└── Assets/
+```
+
+### **Backend Architecture**
+```
+Supabase Backend
+├── Database (PostgreSQL)
+├── Authentication (Row Level Security)
+├── Edge Functions (Deno/TypeScript)
+├── Storage (File Management)
+├── Real-time Subscriptions
+└── API Gateway
+```
+
+### **Integration Layer**
+```
+External APIs
+├── TAI Freight API
+├── Google Maps API
+├── OpenAI API
+├── Claude API
+├── Gemini API
+└── Carrier APIs
+```
+
+### **Deployment Architecture**
+```
+Production Environment
+├── Frontend: Vercel/Netlify
+├── Backend: Supabase Cloud
+├── CDN: CloudFlare
+├── Monitoring: Supabase Analytics
+└── Backups: Automated Daily
+```
+
+---
+
+## 📦 Dependencies & Libraries
+
+### **Package.json - Complete Dependencies**
+
+```json
+{
+  "name": "ape-maxx-logistics",
+  "version": "1.0.0",
+  "private": true,
+  "dependencies": {
+    "@supabase/supabase-js": "^2.38.0",
+    "@supabase/auth-helpers-react": "^0.4.2",
+    "react": "^18.2.0",
+    "react-dom": "^18.2.0",
+    "react-router-dom": "^6.8.0",
+    "react-query": "^3.39.3",
+    "react-hook-form": "^7.43.0",
+    "react-hot-toast": "^2.4.0",
+    "zustand": "^4.3.6",
+    "date-fns": "^2.29.3",
+    "lucide-react": "^0.263.1",
+    "recharts": "^2.5.0",
+    "framer-motion": "^10.12.4",
+    "react-table": "^7.8.0",
+    "react-select": "^5.7.0",
+    "react-datepicker": "^4.10.0",
+    "react-dropzone": "^14.2.3",
+    "react-pdf": "^6.2.2",
+    "html2canvas": "^1.4.1",
+    "jspdf": "^2.5.1",
+    "xlsx": "^0.18.5",
+    "papaparse": "^5.4.1",
+    "lodash": "^4.17.21",
+    "uuid": "^9.0.0",
+    "classnames": "^2.3.2",
+    "react-helmet-async": "^1.3.0",
+    "react-error-boundary": "^4.0.10"
+  },
+  "devDependencies": {
+    "@types/react": "^18.0.28",
+    "@types/react-dom": "^18.0.11",
+    "@types/node": "^18.15.3",
+    "@types/lodash": "^4.14.191",
+    "@types/uuid": "^9.0.1",
+    "@types/papaparse": "^5.3.7",
+    "@vitejs/plugin-react": "^3.1.0",
+    "typescript": "^4.9.5",
+    "vite": "^4.2.0",
+    "tailwindcss": "^3.2.7",
+    "autoprefixer": "^10.4.14",
+    "postcss": "^8.4.21",
+    "eslint": "^8.36.0",
+    "eslint-plugin-react": "^7.32.2",
+    "eslint-plugin-react-hooks": "^4.6.0",
+    "@typescript-eslint/eslint-plugin": "^5.57.0",
+    "@typescript-eslint/parser": "^5.57.0",
+    "prettier": "^2.8.6"
+  }
+}
+```
+
+### **Key Libraries Explanation**
+
+#### **Core Framework**
+- **React 18**: Main UI framework with concurrent features
+- **TypeScript**: Type safety and better developer experience
+- **Vite**: Fast build tool and dev server
+
+#### **State Management**
+- **Zustand**: Lightweight state management
+- **React Query**: Server state management and caching
+- **React Hook Form**: Form state and validation
+
+#### **UI Components**
+- **Tailwind CSS**: Utility-first CSS framework
+- **Lucide React**: Modern icon library
+- **Framer Motion**: Animation library
+- **React Hot Toast**: Notification system
+
+#### **Data Visualization**
+- **Recharts**: Chart library for analytics
+- **React Table**: Data table functionality
+
+#### **Form Handling**
+- **React Select**: Advanced select components
+- **React Datepicker**: Date selection
+- **React Dropzone**: File upload handling
+
+#### **Document Processing**
+- **React PDF**: PDF viewing and generation
+- **html2canvas**: Screenshot generation
+- **jsPDF**: PDF creation
+- **XLSX**: Excel file processing
+- **PapaParse**: CSV parsing
+
+#### **Utilities**
+- **date-fns**: Date manipulation
+- **lodash**: Utility functions
+- **uuid**: Unique ID generation
+- **classnames**: Conditional CSS classes
+
+#### **Backend Integration**
+- **@supabase/supabase-js**: Supabase client
+- **@supabase/auth-helpers-react**: Authentication helpers
+
+---
+
+## 🔌 API Specifications
+
+### **Supabase Edge Functions**
+
+#### **1. TAI Integration Functions**
+
+##### **tai-get-quote**
+```typescript
+POST /functions/v1/tai-get-quote
+Headers: {
+  Authorization: Bearer <token>
+  Content-Type: application/json
+}
+Body: {
+  originZipCode: string
+  destinationZipCode: string
+  commodities: Array<{
+    handlingQuantity: number
+    packagingType: string
+    width: number
+    length: number
+    height: number
+    weightTotal: number
+    freightclass: number
+    description: string
+    hazardousMaterial: boolean
+  }>
+  accessorials?: string[]
+  customerReferenceNumber?: string
+}
+Response: {
+  success: boolean
+  quote_id: string
+  quotes: Array<CarrierQuote>
+}
+```
+
+##### **tai-book-shipment**
+```typescript
+POST /functions/v1/tai-book-shipment
+Body: {
+  quote_id: string
+  selected_carrier: string
+  pickup_address: Address
+  delivery_address: Address
+  shipper_info: ContactInfo
+  consignee_info: ContactInfo
+  pickup_date: string
+  delivery_date: string
+}
+Response: {
+  success: boolean
+  shipment_id: string
+  tracking_number: string
+  booking_reference: string
+}
+```
+
+##### **tai-track-shipment**
+```typescript
+POST /functions/v1/tai-track-shipment
+Body: {
+  tracking_number: string
+  shipment_id?: string
+}
+Response: {
+  success: boolean
+  tracking_data: {
+    current_status: string
+    location: string
+    estimated_delivery: string
+    event_history: Array<TrackingEvent>
+  }
+}
+```
+
+#### **2. Comprehensive Freight API**
+
+##### **comprehensive-freight-api**
+```typescript
+POST /functions/v1/comprehensive-freight-api
+Body: {
+  operation: 'get_ltl_quote' | 'create_tai_shipment' | 'track_shipment' | 'validate_address' | 'ai_chat'
+  // Parameters specific to operation
+}
+Response: {
+  success: boolean
+  data: any
+  error?: string
+}
+```
+
+#### **3. AI Chat Functions**
+
+##### **openai-chat**
+```typescript
+POST /functions/v1/openai-chat
+Body: {
+  messages: Array<{
+    role: 'user' | 'assistant' | 'system'
+    content: string
+  }>
+  model?: string
+  temperature?: number
+  max_tokens?: number
+}
+Response: {
+  success: boolean
+  provider: 'openai'
+  response: string
+  usage: object
+}
+```
+
+#### **4. Warehouse Functions**
+
+##### **warehouse-receipt-processor**
+```typescript
+POST /functions/v1/warehouse-receipt-processor
+Body: {
+  action: 'create_receipt' | 'update_receipt' | 'calculate_charges'
+  data: WarehouseReceiptData
+  documents?: Array<DocumentUpload>
+}
+Response: {
+  success: boolean
+  receipt: WarehouseReceipt
+  charges_calculation?: object
+}
+```
+
+### **Database API (Supabase Auto-generated)**
+
+#### **REST Endpoints**
+```
+GET    /rest/v1/quotes
+POST   /rest/v1/quotes
+PATCH  /rest/v1/quotes?id=eq.{id}
+DELETE /rest/v1/quotes?id=eq.{id}
+
+GET    /rest/v1/shipments
+POST   /rest/v1/shipments
+PATCH  /rest/v1/shipments?id=eq.{id}
+
+GET    /rest/v1/lcl_bookings_enhanced
+POST   /rest/v1/lcl_bookings_enhanced
+
+GET    /rest/v1/warehouse_receipts
+POST   /rest/v1/warehouse_receipts
+```
+
+#### **Real-time Subscriptions**
+```typescript
+// Shipment tracking updates
+const subscription = supabase
+  .channel('tracking_updates')
+  .on('postgres_changes', {
+    event: 'INSERT',
+    schema: 'public',
+    table: 'tracking_updates'
+  }, (payload) => {
+    // Handle real-time tracking update
+  })
+  .subscribe()
+
+// Quote status changes
+const quoteSubscription = supabase
+  .channel('quote_updates')
+  .on('postgres_changes', {
+    event: 'UPDATE',
+    schema: 'public',
+    table: 'quotes'
+  }, (payload) => {
+    // Handle quote status change
+  })
+  .subscribe()
+```
+
+---
+
+## 🗺️ Implementation Roadmap
+
+### **Phase 1: MVP Development (Weeks 1-8)**
+
+#### **Week 1-2: Foundation**
+- [ ] Set up development environment
+- [ ] Configure Supabase project
+- [ ] Implement authentication system
+- [ ] Create basic project structure
+- [ ] Set up CI/CD pipeline
+
+#### **Week 3-4: Core Features**
+- [ ] Build dashboard with KPIs
+- [ ] Implement freight quoting system
+- [ ] TAI API integration
+- [ ] Address book management
+- [ ] Basic shipment tracking
+
+#### **Week 5-6: LCL Module**
+- [ ] LCL booking creation
+- [ ] Party management
+- [ ] Commodity tracking
+- [ ] Status updates
+- [ ] Basic reporting
+
+#### **Week 7-8: Polish & Testing**
+- [ ] UI/UX improvements
+- [ ] Error handling
+- [ ] Performance optimization
+- [ ] User testing
+- [ ] Bug fixes
+
+### **Phase 2: Advanced Features (Weeks 9-16)**
+
+#### **Week 9-10: Warehouse Management**
+- [ ] Digital receipt processing
+- [ ] Document upload system
+- [ ] CFS location management
+- [ ] Charge calculations
+- [ ] PDF generation
+
+#### **Week 11-12: AI Integration**
+- [ ] Multi-provider chat system
+- [ ] Logistics knowledge base
+- [ ] Natural language processing
+- [ ] Automated task suggestions
+- [ ] Smart notifications
+
+#### **Week 13-14: Enhanced Tracking**
+- [ ] Real-time tracking updates
+- [ ] Multi-carrier integration
+- [ ] Customer notifications
+- [ ] Delivery confirmation
+- [ ] Exception handling
+
+#### **Week 15-16: Analytics & Reporting**
+- [ ] Custom report generation
+- [ ] Performance metrics
+- [ ] Financial reporting
+- [ ] Data visualization
+- [ ] Export capabilities
+
+### **Phase 3: Enterprise Features (Weeks 17-24)**
+
+#### **Week 17-18: Integration Hub**
+- [ ] EDI integration
+- [ ] Third-party APIs
+- [ ] Webhook management
+- [ ] Data synchronization
+- [ ] API marketplace
+
+#### **Week 19-20: Mobile Application**
+- [ ] React Native setup
+- [ ] Core functionality port
+- [ ] Offline capabilities
+- [ ] Push notifications
+- [ ] App store deployment
+
+#### **Week 21-22: Advanced AI**
+- [ ] Predictive analytics
+- [ ] Automated decision making
+- [ ] Route optimization
+- [ ] Anomaly detection
+- [ ] Machine learning models
+
+#### **Week 23-24: Production Ready**
+- [ ] Security hardening
+- [ ] Performance optimization
+- [ ] Scalability testing
+- [ ] Documentation completion
+- [ ] Go-live preparation
+
+---
+
+## 🚀 Getting Started
+
+### **Development Setup**
+
+1. **Clone and Install**
+```bash
+git clone <repository>
+cd ape-maxx-logistics
+npm install
+```
+
+2. **Environment Configuration**
+```bash
+# .env.local
+VITE_SUPABASE_URL=https://bqmpupymchanohpfzglw.supabase.co
+VITE_SUPABASE_ANON_KEY=your_anon_key
+VITE_TAI_API_KEY=your_tai_api_key
+VITE_GOOGLE_MAPS_API_KEY=your_google_maps_key
+```
+
+3. **Database Setup**
+```bash
+# Run migrations in Supabase dashboard
+# Enable RLS policies
+# Set up Edge Functions
+```
+
+4. **Start Development**
+```bash
+npm run dev
+```
+
+### **Deployment**
+
+1. **Frontend Deployment (Vercel)**
+```bash
+npm run build
+vercel deploy
+```
+
+2. **Backend Configuration**
+- Configure Supabase Edge Functions
+- Set environment variables
+- Enable database backups
+- Configure monitoring
+
+3. **Production Checklist**
+- [ ] SSL certificates
+- [ ] Domain configuration
+- [ ] CDN setup
+- [ ] Monitoring alerts
+- [ ] Backup verification
+- [ ] Security audit
+- [ ] Performance testing
+- [ ] User acceptance testing
+
+---
+
+## 📊 Success Metrics
+
+### **Technical KPIs**
+- **Performance**: Page load time < 2 seconds
+- **Uptime**: 99.9% availability
+- **Error Rate**: < 0.1% error rate
+- **API Response**: < 500ms average response time
+
+### **Business KPIs**
+- **User Adoption**: Monthly active users
+- **Quote Conversion**: Quote-to-booking ratio
+- **Processing Time**: Average booking processing time
+- **Customer Satisfaction**: NPS score > 8
+
+### **Operational KPIs**
+- **Shipment Accuracy**: 99%+ accuracy rate
+- **Document Processing**: < 5 minute processing time
+- **Support Response**: < 1 hour response time
+- **System Reliability**: < 1 hour downtime per month
+
+---
+
+This comprehensive PRD provides everything needed to build a world-class logistics management platform. The architecture is designed for scalability, the features address real industry needs, and the implementation roadmap ensures systematic development with clear milestones.

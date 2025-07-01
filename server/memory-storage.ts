@@ -85,6 +85,14 @@ export class MemoryStorage implements IStorage {
       website: profile.website || null,
       jobTitle: profile.jobTitle || null,
       organizationId: profile.organizationId || null,
+      // Default profit margins
+      defaultProfitMargin: profile.defaultProfitMargin || "15.00",
+      seaFreightMargin: profile.seaFreightMargin || "12.00",
+      airFreightMargin: profile.airFreightMargin || "18.00",
+      landFreightMargin: profile.landFreightMargin || "15.00",
+      warehouseMargin: profile.warehouseMargin || "20.00",
+      customsMargin: profile.customsMargin || "25.00",
+      insuranceMargin: profile.insuranceMargin || "30.00",
       updatedAt: new Date(),
     };
     this.profiles.push(newProfile);
@@ -473,6 +481,14 @@ export class MemoryStorage implements IStorage {
       website: null,
       jobTitle: 'Senior Logistics Manager',
       organizationId: null,
+      // Default profit margins
+      defaultProfitMargin: "15.00",
+      seaFreightMargin: "12.00",
+      airFreightMargin: "18.00",
+      landFreightMargin: "15.00",
+      warehouseMargin: "20.00",
+      customsMargin: "25.00",
+      insuranceMargin: "30.00",
       updatedAt: new Date(),
     };
     this.profiles.push(sampleProfile);

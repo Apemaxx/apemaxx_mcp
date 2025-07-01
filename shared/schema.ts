@@ -20,6 +20,14 @@ export const profiles = pgTable("profiles", {
   website: text("website"),
   jobTitle: text("job_title"),
   organizationId: uuid("organization_id"),
+  // Profit settings
+  defaultProfitMargin: numeric("default_profit_margin", { precision: 5, scale: 2 }).default("15.00"), // Default 15%
+  seaFreightMargin: numeric("sea_freight_margin", { precision: 5, scale: 2 }).default("12.00"), // Sea freight 12%
+  airFreightMargin: numeric("air_freight_margin", { precision: 5, scale: 2 }).default("18.00"), // Air freight 18%
+  landFreightMargin: numeric("land_freight_margin", { precision: 5, scale: 2 }).default("15.00"), // Land freight 15%
+  warehouseMargin: numeric("warehouse_margin", { precision: 5, scale: 2 }).default("20.00"), // Warehouse 20%
+  customsMargin: numeric("customs_margin", { precision: 5, scale: 2 }).default("25.00"), // Customs 25%
+  insuranceMargin: numeric("insurance_margin", { precision: 5, scale: 2 }).default("30.00"), // Insurance 30%
   updatedAt: timestamp("updated_at").defaultNow().notNull(),
 });
 
