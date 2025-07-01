@@ -141,7 +141,15 @@ export default function ProfileSettingsV2({ isOpen, onClose }: ProfileSettingsV2
 
       const profileData = {
         user_id: user?.id,
-        ...formData,
+        name: formData.name,
+        email: formData.email,
+        company: formData.company,
+        phone: formData.phone,
+        bio: formData.bio,
+        location: formData.location,
+        website: formData.website,
+        job_title: formData.job_title,
+        avatar_url: formData.avatar_url,
         updated_at: new Date().toISOString(),
       };
 

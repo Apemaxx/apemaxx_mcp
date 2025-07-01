@@ -1,4 +1,4 @@
-import { UserMenu } from '@/components/dashboard/user-menu';
+import { UserMenu } from '@/components/dashboard/user-menu-v2';
 import { KPIMetrics } from '@/components/dashboard/kpi-metrics';
 import { QuickActions } from '@/components/dashboard/quick-actions';
 import { ConsolidationPlan } from '@/components/dashboard/consolidation-plan';
