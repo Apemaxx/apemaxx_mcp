@@ -70,29 +70,25 @@ export class MemoryStorage implements IStorage {
   }
 
   async getProfile(userId: string): Promise<Profile | undefined> {
-    return this.profiles.find(profile => profile.userId === userId);
+    return this.profiles.find(profile => profile.id === userId);
   }
 
   async createProfile(profile: InsertProfile): Promise<Profile> {
     const newProfile: Profile = {
-      id: `profile_${this.profiles.length + 1}`,
-      userId: profile.userId,
-      firstName: profile.firstName || null,
-      lastName: profile.lastName || null,
+      id: profile.id || `profile_${this.profiles.length + 1}`,
+      email: profile.email || null,
+      name: profile.name || null,
+      company: profile.company || null,
+      phone: profile.phone || null,
+      language: profile.language || "en",
+      llmApiKey: profile.llmApiKey || null,
       avatarUrl: profile.avatarUrl || null,
       bio: profile.bio || null,
       location: profile.location || null,
       website: profile.website || null,
       jobTitle: profile.jobTitle || null,
       organizationId: profile.organizationId || null,
-      // Default profit margins
-      defaultProfitMargin: profile.defaultProfitMargin || "15.00",
-      seaFreightMargin: profile.seaFreightMargin || "12.00",
-      airFreightMargin: profile.airFreightMargin || "18.00",
-      landFreightMargin: profile.landFreightMargin || "15.00",
-      warehouseMargin: profile.warehouseMargin || "20.00",
-      customsMargin: profile.customsMargin || "25.00",
-      insuranceMargin: profile.insuranceMargin || "30.00",
+      createdAt: new Date(),
       updatedAt: new Date(),
     };
     this.profiles.push(newProfile);

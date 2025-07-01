@@ -4,24 +4,27 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Badge } from "@/components/ui/badge";
-import { Separator } from "@/components/ui/separator";
+import { Textarea } from "@/components/ui/textarea";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { useToast } from "@/hooks/use-toast";
 import { apiRequest, queryClient } from "@/lib/queryClient";
 import { Profile } from "@shared/schema";
-import { TrendingUp, Ship, Plane, Truck, Warehouse, FileText, Shield, Settings2 } from 'lucide-react';
+import { User, Settings, Phone, MapPin, Globe, Briefcase, Key } from 'lucide-react';
 
-export function ProfitSettings() {
+export function ProfileSettings() {
   const { toast } = useToast();
   const [isEditing, setIsEditing] = useState(false);
-  const [margins, setMargins] = useState({
-    defaultProfitMargin: '',
-    seaFreightMargin: '',
-    airFreightMargin: '',
-    landFreightMargin: '',
-    warehouseMargin: '',
-    customsMargin: '',
-    insuranceMargin: '',
+  const [formData, setFormData] = useState({
+    name: '',
+    email: '',
+    company: '',
+    phone: '',
+    language: 'en',
+    llmApiKey: '',
+    bio: '',
+    location: '',
+    website: '',
+    jobTitle: '',
   });
 
   // Fetch current profile data
@@ -29,17 +32,20 @@ export function ProfitSettings() {
     queryKey: ['/api/profile'],
   });
 
-  // Update margins when profile data loads
+  // Update form data when profile loads
   useEffect(() => {
     if (profile) {
-      setMargins({
-        defaultProfitMargin: profile.defaultProfitMargin || '15.00',
-        seaFreightMargin: profile.seaFreightMargin || '12.00',
-        airFreightMargin: profile.airFreightMargin || '18.00',
-        landFreightMargin: profile.landFreightMargin || '15.00',
-        warehouseMargin: profile.warehouseMargin || '20.00',
-        customsMargin: profile.customsMargin || '25.00',
-        insuranceMargin: profile.insuranceMargin || '30.00',
+      setFormData({
+        name: profile.name || '',
+        email: profile.email || '',
+        company: profile.company || '',
+        phone: profile.phone || '',
+        language: profile.language || 'en',
+        llmApiKey: profile.llmApiKey || '',
+        bio: profile.bio || '',
+        location: profile.location || '',
+        website: profile.website || '',
+        jobTitle: profile.jobTitle || '',
       });
     }
   }, [profile]);

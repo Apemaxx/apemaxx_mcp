@@ -10,24 +10,20 @@ export const users = pgTable("users", {
 });
 
 export const profiles = pgTable("profiles", {
-  id: uuid("id").primaryKey().defaultRandom(),
-  userId: uuid("user_id").references(() => users.id).notNull(),
-  firstName: text("first_name"),
-  lastName: text("last_name"),
+  id: uuid("id").primaryKey(), // References auth.users(id) in Supabase
+  email: text("email"),
+  name: text("name"),
+  company: text("company"),
+  phone: text("phone"),
+  language: text("language").default("en"),
+  llmApiKey: text("llm_api_key"), // For AI providers - key profile setting
   avatarUrl: text("avatar_url"),
   bio: text("bio"),
   location: text("location"),
   website: text("website"),
   jobTitle: text("job_title"),
-  organizationId: uuid("organization_id"),
-  // Profit settings
-  defaultProfitMargin: numeric("default_profit_margin", { precision: 5, scale: 2 }).default("15.00"), // Default 15%
-  seaFreightMargin: numeric("sea_freight_margin", { precision: 5, scale: 2 }).default("12.00"), // Sea freight 12%
-  airFreightMargin: numeric("air_freight_margin", { precision: 5, scale: 2 }).default("18.00"), // Air freight 18%
-  landFreightMargin: numeric("land_freight_margin", { precision: 5, scale: 2 }).default("15.00"), // Land freight 15%
-  warehouseMargin: numeric("warehouse_margin", { precision: 5, scale: 2 }).default("20.00"), // Warehouse 20%
-  customsMargin: numeric("customs_margin", { precision: 5, scale: 2 }).default("25.00"), // Customs 25%
-  insuranceMargin: numeric("insurance_margin", { precision: 5, scale: 2 }).default("30.00"), // Insurance 30%
+  organizationId: integer("organization_id"), // References organizations(id)
+  createdAt: timestamp("created_at").defaultNow().notNull(),
   updatedAt: timestamp("updated_at").defaultNow().notNull(),
 });
 
@@ -156,9 +152,9 @@ export const insertChatMessageSchema = createInsertSchema(chatMessages).omit({
 });
 
 export const insertProfileSchema = createInsertSchema(profiles).omit({
-  id: true,
+  createdAt: true,
   updatedAt: true,
-});
+}).partial({ id: true }); // Make id optional for creation
 
 // Types
 export type User = typeof users.$inferSelect;

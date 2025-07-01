@@ -205,19 +205,20 @@ export class DbStorage implements IStorage {
   }
 
   async getProfile(userId: string): Promise<Profile | undefined> {
-    const result = await db.select().from(profiles).where(eq(profiles.userId, userId)).limit(1);
+    const result = await db.select().from(profiles).where(eq(profiles.id, userId)).limit(1);
     return result[0];
   }
 
   async createProfile(profile: InsertProfile): Promise<Profile> {
-    const result = await db.insert(profiles).values(profile).returning();
+    const profileData = { ...profile, id: profile.id || crypto.randomUUID() };
+    const result = await db.insert(profiles).values(profileData).returning();
     return result[0];
   }
 
   async updateProfile(userId: string, profile: Partial<InsertProfile>): Promise<Profile> {
     const result = await db.update(profiles)
       .set({ ...profile, updatedAt: new Date() })
-      .where(eq(profiles.userId, userId))
+      .where(eq(profiles.id, userId))
       .returning();
     return result[0];
   }
