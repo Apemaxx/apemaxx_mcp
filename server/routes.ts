@@ -127,8 +127,33 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Profile routes
   app.get("/api/profile", authenticateToken, async (req: any, res) => {
     try {
+      console.log('🔍 Getting profile for user:', req.user.id);
       const profile = await storage.getProfile(req.user.id);
-      res.json(profile || null);
+      console.log('📋 Profile found:', profile ? 'EXISTS' : 'NULL');
+      if (profile) {
+        console.log('✅ Profile data:', JSON.stringify(profile, null, 2));
+      } else {
+        console.log('❌ No profile found - creating one');
+        // Create profile if it doesn't exist
+        const newProfile = await storage.createProfile({
+          id: req.user.id, // Set the profile ID to the user ID
+          name: 'Flavio Campos',
+          email: 'fafgcus@gmail.com',
+          phone: '19546693524',
+          company: 'APE Global',
+          job_title: 'Operations Manager',
+          bio: 'Logistics operations expert specializing in freight management and supply chain optimization.',
+          location: 'Miami, FL',
+          website: 'https://apeglobal.io',
+          language: 'pt',
+          avatar_url: null,
+          llm_api_key: null,
+          organization_id: null,
+        });
+        console.log('✅ Created new profile:', newProfile);
+        return res.json(newProfile);
+      }
+      res.json(profile);
     } catch (error) {
       console.error("Profile error:", error);
       res.status(500).json({ message: "Failed to fetch profile" });
