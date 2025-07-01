@@ -1,0 +1,722 @@
+// src/components/WarehouseReceiptManager.jsx
+// Adapted for your existing database schema
+
+import React, { useState, useEffect } from 'react';
+import { 
+  Package, Plus, Eye, Upload, FileText, Truck, 
+  AlertCircle, CheckCircle, Clock, Search, Filter,
+  Download, Link as LinkIcon, X 
+} from 'lucide-react';
+import { warehouseService } from '../lib/warehouseService';
+
+const WarehouseReceiptManager = ({ userId }) => {
+  const [receipts, setReceipts] = useState([]);
+  const [stats, setStats] = useState({});
+  const [loading, setLoading] = useState(true);
+  const [showCreateForm, setShowCreateForm] = useState(false);
+  const [searchTerm, setSearchTerm] = useState('');
+  const [statusFilter, setStatusFilter] = useState('all');
+  const [selectedReceipt, setSelectedReceipt] = useState(null);
+
+  useEffect(() => {
+    loadData();
+  }, [userId]);
+
+  const loadData = async () => {
+    try {
+      setLoading(true);
+      const [receiptsData, statsData] = await Promise.all([
+        warehouseService.getReceipts(userId, 20),
+        warehouseService.getDashboardStats(userId)
+      ]);
+      
+      setReceipts(receiptsData);
+      setStats(statsData);
+    } catch (error) {
+      console.error('Error loading warehouse data:', error);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleSearch = async () => {
+    if (!searchTerm.trim()) {
+      loadData();
+      return;
+    }
+
+    try {
+      const results = await warehouseService.searchReceipts(userId, searchTerm);
+      setReceipts(results);
+    } catch (error) {
+      console.error('Search error:', error);
+    }
+  };
+
+  const handleStatusFilter = async (status) => {
+    setStatusFilter(status);
+    try {
+      if (status === 'all') {
+        loadData();
+      } else {
+        const results = await warehouseService.getReceiptsByStatus(userId, status);
+        setReceipts(results);
+      }
+    } catch (error) {
+      console.error('Filter error:', error);
+    }
+  };
+
+  const StatusIcon = ({ status }) => {
+    const icons = {
+      received: CheckCircle,
+      processing: Clock,
+      stored: Package,
+      ready_for_release: AlertCircle,
+      delivered: Truck
+    };
+    const colors = {
+      received: 'text-blue-600',
+      processing: 'text-yellow-600',
+      stored: 'text-green-600',
+      ready_for_release: 'text-orange-600',
+      delivered: 'text-purple-600'
+    };
+    
+    const Icon = icons[status] || Clock;
+    return <Icon className={`w-4 h-4 ${colors[status] || 'text-gray-600'}`} />;
+  };
+
+  const StatusBadge = ({ status }) => {
+    const colors = {
+      received: 'bg-blue-100 text-blue-800',
+      processing: 'bg-yellow-100 text-yellow-800',
+      stored: 'bg-green-100 text-green-800',
+      ready_for_release: 'bg-orange-100 text-orange-800',
+      delivered: 'bg-purple-100 text-purple-800'
+    };
+
+    return (
+      <span className={`px-2 py-1 rounded-full text-xs font-medium ${colors[status] || 'bg-gray-100 text-gray-800'}`}>
+        {status.replace('_', ' ').toUpperCase()}
+      </span>
+    );
+  };
+
+  const CreateReceiptModal = () => {
+    const [formData, setFormData] = useState({
+      tracking_number: '',
+      carrier_name: '',
+      driver_name: '',
+      shipper_name: '',
+      shipper_address: '',
+      consignee_name: '',
+      consignee_address: '',
+      total_pieces: 0,
+      total_weight_lbs: 0,
+      cargo_description: 'GENERAL CARGO',
+      received_by: '',
+      warehouse_location: '',
+      notes: ''
+    });
+    const [files, setFiles] = useState([]);
+    const [creating, setCreating] = useState(false);
+
+    const handleSubmit = async (e) => {
+      e.preventDefault();
+      try {
+        setCreating(true);
+        await warehouseService.createReceipt({
+          ...formData,
+          user_id: userId
+        }, files);
+        
+        setShowCreateForm(false);
+        loadData();
+        alert('Warehouse receipt created successfully!');
+        
+        // Reset form
+        setFormData({
+          tracking_number: '',
+          carrier_name: '',
+          driver_name: '',
+          shipper_name: '',
+          shipper_address: '',
+          consignee_name: '',
+          consignee_address: '',
+          total_pieces: 0,
+          total_weight_lbs: 0,
+          cargo_description: 'GENERAL CARGO',
+          received_by: '',
+          warehouse_location: '',
+          notes: ''
+        });
+        setFiles([]);
+      } catch (error) {
+        console.error('Error creating receipt:', error);
+        alert('Error creating receipt: ' + error.message);
+      } finally {
+        setCreating(false);
+      }
+    };
+
+    return (
+      <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+        <div className="bg-white rounded-lg p-6 max-w-4xl w-full mx-4 max-h-[90vh] overflow-y-auto">
+          <div className="flex justify-between items-center mb-6">
+            <h3 className="text-xl font-semibold">Create Warehouse Receipt</h3>
+            <button 
+              onClick={() => setShowCreateForm(false)} 
+              className="text-gray-500 hover:text-gray-700"
+            >
+              <X className="w-6 h-6" />
+            </button>
+          </div>
+
+          <form onSubmit={handleSubmit} className="space-y-6">
+            {/* Basic Info */}
+            <div className="grid grid-cols-2 gap-4">
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">
+                  Tracking Number *
+                </label>
+                <input
+                  type="text"
+                  value={formData.tracking_number}
+                  onChange={(e) => setFormData({...formData, tracking_number: e.target.value})}
+                  className="w-full border border-gray-300 rounded-md px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  required
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">
+                  Carrier Name *
+                </label>
+                <input
+                  type="text"
+                  value={formData.carrier_name}
+                  onChange={(e) => setFormData({...formData, carrier_name: e.target.value})}
+                  className="w-full border border-gray-300 rounded-md px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  required
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">
+                  Driver Name
+                </label>
+                <input
+                  type="text"
+                  value={formData.driver_name}
+                  onChange={(e) => setFormData({...formData, driver_name: e.target.value})}
+                  className="w-full border border-gray-300 rounded-md px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">
+                  Received By *
+                </label>
+                <input
+                  type="text"
+                  value={formData.received_by}
+                  onChange={(e) => setFormData({...formData, received_by: e.target.value})}
+                  className="w-full border border-gray-300 rounded-md px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  required
+                />
+              </div>
+            </div>
+
+            {/* Shipper/Consignee */}
+            <div className="grid grid-cols-2 gap-6">
+              <div>
+                <h4 className="font-medium text-gray-900 mb-3">Shipper Information</h4>
+                <div className="space-y-3">
+                  <input
+                    type="text"
+                    placeholder="Shipper Name"
+                    value={formData.shipper_name}
+                    onChange={(e) => setFormData({...formData, shipper_name: e.target.value})}
+                    className="w-full border border-gray-300 rounded-md px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  />
+                  <textarea
+                    placeholder="Shipper Address"
+                    value={formData.shipper_address}
+                    onChange={(e) => setFormData({...formData, shipper_address: e.target.value})}
+                    className="w-full border border-gray-300 rounded-md px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    rows={3}
+                  />
+                </div>
+              </div>
+              <div>
+                <h4 className="font-medium text-gray-900 mb-3">Consignee Information</h4>
+                <div className="space-y-3">
+                  <input
+                    type="text"
+                    placeholder="Consignee Name"
+                    value={formData.consignee_name}
+                    onChange={(e) => setFormData({...formData, consignee_name: e.target.value})}
+                    className="w-full border border-gray-300 rounded-md px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  />
+                  <textarea
+                    placeholder="Consignee Address"
+                    value={formData.consignee_address}
+                    onChange={(e) => setFormData({...formData, consignee_address: e.target.value})}
+                    className="w-full border border-gray-300 rounded-md px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    rows={3}
+                  />
+                </div>
+              </div>
+            </div>
+
+            {/* Cargo Details */}
+            <div className="grid grid-cols-3 gap-4">
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">
+                  Total Pieces
+                </label>
+                <input
+                  type="number"
+                  value={formData.total_pieces}
+                  onChange={(e) => setFormData({...formData, total_pieces: parseInt(e.target.value) || 0})}
+                  className="w-full border border-gray-300 rounded-md px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">
+                  Total Weight (lbs)
+                </label>
+                <input
+                  type="number"
+                  step="0.01"
+                  value={formData.total_weight_lbs}
+                  onChange={(e) => setFormData({...formData, total_weight_lbs: parseFloat(e.target.value) || 0})}
+                  className="w-full border border-gray-300 rounded-md px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">
+                  Warehouse Location
+                </label>
+                <input
+                  type="text"
+                  value={formData.warehouse_location}
+                  onChange={(e) => setFormData({...formData, warehouse_location: e.target.value})}
+                  className="w-full border border-gray-300 rounded-md px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                />
+              </div>
+            </div>
+
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">
+                Cargo Description
+              </label>
+              <textarea
+                value={formData.cargo_description}
+                onChange={(e) => setFormData({...formData, cargo_description: e.target.value})}
+                className="w-full border border-gray-300 rounded-md px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                rows={2}
+              />
+            </div>
+
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">
+                Notes
+              </label>
+              <textarea
+                value={formData.notes}
+                onChange={(e) => setFormData({...formData, notes: e.target.value})}
+                className="w-full border border-gray-300 rounded-md px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                rows={2}
+              />
+            </div>
+
+            {/* File Upload */}
+            <div className="border-2 border-dashed border-gray-300 rounded-lg p-6 text-center">
+              <Upload className="w-8 h-8 text-gray-400 mx-auto mb-2" />
+              <p className="text-sm text-gray-600 mb-2">Upload Documents & Photos</p>
+              <input
+                type="file"
+                multiple
+                onChange={(e) => setFiles(Array.from(e.target.files))}
+                className="hidden"
+                id="file-upload"
+                accept=".pdf,.doc,.docx,.jpg,.jpeg,.png,.gif"
+              />
+              <label
+                htmlFor="file-upload"
+                className="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 cursor-pointer inline-block"
+              >
+                Choose Files
+              </label>
+              {files.length > 0 && (
+                <div className="mt-3">
+                  <p className="text-sm text-gray-600">{files.length} file(s) selected:</p>
+                  <div className="mt-2 space-y-1">
+                    {files.map((file, index) => (
+                      <div key={index} className="text-xs text-gray-500">
+                        {file.name} ({(file.size / 1024 / 1024).toFixed(2)} MB)
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+            </div>
+
+            {/* Form Actions */}
+            <div className="flex justify-end space-x-3 pt-4 border-t">
+              <button
+                type="button"
+                onClick={() => setShowCreateForm(false)}
+                className="px-4 py-2 border border-gray-300 rounded-md hover:bg-gray-50 font-medium"
+              >
+                Cancel
+              </button>
+              <button
+                type="submit"
+                disabled={creating}
+                className="px-6 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 disabled:opacity-50 font-medium"
+              >
+                {creating ? 'Creating...' : 'Create Receipt'}
+              </button>
+            </div>
+          </form>
+        </div>
+      </div>
+    );
+  };
+
+  const ReceiptDetailModal = ({ receipt, onClose }) => {
+    const [receiptDetails, setReceiptDetails] = useState(null);
+    const [loading, setLoading] = useState(true);
+
+    useEffect(() => {
+      const loadDetails = async () => {
+        try {
+          const details = await warehouseService.getReceiptById(receipt.id);
+          setReceiptDetails(details);
+        } catch (error) {
+          console.error('Error loading receipt details:', error);
+        } finally {
+          setLoading(false);
+        }
+      };
+      loadDetails();
+    }, [receipt.id]);
+
+    if (loading) {
+      return (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+          <div className="bg-white rounded-lg p-6 max-w-4xl w-full mx-4">
+            <div className="animate-pulse space-y-4">
+              <div className="h-6 bg-gray-200 rounded w-1/3"></div>
+              <div className="space-y-2">
+                <div className="h-4 bg-gray-200 rounded"></div>
+                <div className="h-4 bg-gray-200 rounded w-5/6"></div>
+              </div>
+            </div>
+          </div>
+        </div>
+      );
+    }
+
+    return (
+      <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+        <div className="bg-white rounded-lg p-6 max-w-4xl w-full mx-4 max-h-[90vh] overflow-y-auto">
+          <div className="flex justify-between items-center mb-6">
+            <div>
+              <h3 className="text-xl font-semibold">Warehouse Receipt Details</h3>
+              <p className="text-gray-600">{receiptDetails?.wr_number}</p>
+            </div>
+            <button 
+              onClick={onClose} 
+              className="text-gray-500 hover:text-gray-700"
+            >
+              <X className="w-6 h-6" />
+            </button>
+          </div>
+
+          <div className="grid grid-cols-2 gap-6">
+            {/* Receipt Info */}
+            <div className="space-y-4">
+              <div>
+                <h4 className="font-medium text-gray-900 mb-2">Receipt Information</h4>
+                <div className="space-y-2 text-sm">
+                  <div className="flex justify-between">
+                    <span className="text-gray-600">Status:</span>
+                    <StatusBadge status={receiptDetails?.status || 'received'} />
+                  </div>
+                  <div className="flex justify-between">
+                    <span className="text-gray-600">Received Date:</span>
+                    <span>{new Date(receiptDetails?.received_date).toLocaleString()}</span>
+                  </div>
+                  <div className="flex justify-between">
+                    <span className="text-gray-600">Received By:</span>
+                    <span>{receiptDetails?.received_by}</span>
+                  </div>
+                  <div className="flex justify-between">
+                    <span className="text-gray-600">Tracking #:</span>
+                    <span>{receiptDetails?.tracking_number}</span>
+                  </div>
+                </div>
+              </div>
+
+              <div>
+                <h4 className="font-medium text-gray-900 mb-2">Cargo Details</h4>
+                <div className="space-y-2 text-sm">
+                  <div className="flex justify-between">
+                    <span className="text-gray-600">Pieces:</span>
+                    <span>{receiptDetails?.total_pieces}</span>
+                  </div>
+                  <div className="flex justify-between">
+                    <span className="text-gray-600">Weight:</span>
+                    <span>{receiptDetails?.total_weight_lb} lbs</span>
+                  </div>
+                  <div className="flex justify-between">
+                    <span className="text-gray-600">Description:</span>
+                    <span>{receiptDetails?.cargo_description}</span>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            {/* Parties & Carrier */}
+            <div className="space-y-4">
+              <div>
+                <h4 className="font-medium text-gray-900 mb-2">Shipper</h4>
+                <div className="text-sm">
+                  <div className="font-medium">{receiptDetails?.shipper_name}</div>
+                  <div className="text-gray-600">{receiptDetails?.shipper_address}</div>
+                </div>
+              </div>
+
+              <div>
+                <h4 className="font-medium text-gray-900 mb-2">Consignee</h4>
+                <div className="text-sm">
+                  <div className="font-medium">{receiptDetails?.consignee_name}</div>
+                  <div className="text-gray-600">{receiptDetails?.consignee_address}</div>
+                </div>
+              </div>
+
+              <div>
+                <h4 className="font-medium text-gray-900 mb-2">Carrier</h4>
+                <div className="space-y-1 text-sm">
+                  <div className="flex justify-between">
+                    <span className="text-gray-600">Carrier:</span>
+                    <span>{receiptDetails?.carrier_name}</span>
+                  </div>
+                  <div className="flex justify-between">
+                    <span className="text-gray-600">Driver:</span>
+                    <span>{receiptDetails?.driver_name}</span>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          {/* Attachments */}
+          {receiptDetails?.attachments && receiptDetails.attachments.length > 0 && (
+            <div className="mt-6">
+              <h4 className="font-medium text-gray-900 mb-3">Attachments</h4>
+              <div className="grid grid-cols-3 gap-3">
+                {receiptDetails.attachments.map((attachment) => (
+                  <div key={attachment.id} className="border rounded-lg p-3 hover:bg-gray-50">
+                    <div className="flex items-center space-x-2">
+                      <FileText className="w-4 h-4 text-gray-500" />
+                      <div className="flex-1 min-w-0">
+                        <div className="text-sm font-medium truncate">{attachment.file_name}</div>
+                        <div className="text-xs text-gray-500">
+                          {(attachment.file_size / 1024 / 1024).toFixed(2)} MB
+                        </div>
+                      </div>
+                      <button 
+                        onClick={() => window.open(attachment.url, '_blank')}
+                        className="text-blue-600 hover:text-blue-800"
+                      >
+                        <Download className="w-4 h-4" />
+                      </button>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+
+          {/* Notes */}
+          {receiptDetails?.notes && (
+            <div className="mt-6">
+              <h4 className="font-medium text-gray-900 mb-2">Notes</h4>
+              <div className="text-sm text-gray-600 bg-gray-50 p-3 rounded-lg">
+                {receiptDetails.notes}
+              </div>
+            </div>
+          )}
+        </div>
+      </div>
+    );
+  };
+
+  if (loading) {
+    return (
+      <div className="bg-white rounded-lg shadow-sm p-6">
+        <div className="animate-pulse space-y-4">
+          <div className="h-6 bg-gray-200 rounded w-1/3"></div>
+          <div className="grid grid-cols-4 gap-4">
+            {[1, 2, 3, 4].map(i => (
+              <div key={i} className="h-16 bg-gray-200 rounded"></div>
+            ))}
+          </div>
+          <div className="space-y-3">
+            {[1, 2, 3].map(i => (
+              <div key={i} className="h-20 bg-gray-200 rounded"></div>
+            ))}
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  return (
+    <>
+      <div className="bg-white rounded-lg shadow-sm">
+        {/* Header */}
+        <div className="p-6 border-b border-gray-200">
+          <div className="flex items-center justify-between mb-4">
+            <h2 className="text-xl font-semibold text-gray-900">Warehouse Management</h2>
+            <button
+              onClick={() => setShowCreateForm(true)}
+              className="flex items-center space-x-2 px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 font-medium"
+            >
+              <Plus className="w-4 h-4" />
+              <span>New Receipt</span>
+            </button>
+          </div>
+
+          {/* Stats */}
+          <div className="grid grid-cols-4 gap-4 mb-6">
+            <div className="text-center p-4 bg-blue-50 rounded-lg">
+              <div className="text-2xl font-bold text-blue-600">{stats.total_receipts || 0}</div>
+              <div className="text-sm text-gray-600">Total Receipts</div>
+            </div>
+            <div className="text-center p-4 bg-green-50 rounded-lg">
+              <div className="text-2xl font-bold text-green-600">{stats.active_receipts || 0}</div>
+              <div className="text-sm text-gray-600">Active</div>
+            </div>
+            <div className="text-center p-4 bg-orange-50 rounded-lg">
+              <div className="text-2xl font-bold text-orange-600">{stats.ready_for_release || 0}</div>
+              <div className="text-sm text-gray-600">Ready for Release</div>
+            </div>
+            <div className="text-center p-4 bg-purple-50 rounded-lg">
+              <div className="text-2xl font-bold text-purple-600">{stats.delivered || 0}</div>
+              <div className="text-sm text-gray-600">Delivered</div>
+            </div>
+          </div>
+
+          {/* Search and Filter */}
+          <div className="flex space-x-4">
+            <div className="flex-1 flex space-x-2">
+              <div className="relative flex-1">
+                <Search className="absolute left-3 top-3 w-4 h-4 text-gray-400" />
+                <input
+                  type="text"
+                  value={searchTerm}
+                  onChange={(e) => setSearchTerm(e.target.value)}
+                  onKeyPress={(e) => e.key === 'Enter' && handleSearch()}
+                  placeholder="Search receipts..."
+                  className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                />
+              </div>
+              <button
+                onClick={handleSearch}
+                className="px-4 py-2 bg-gray-100 text-gray-700 rounded-md hover:bg-gray-200"
+              >
+                Search
+              </button>
+            </div>
+            <div className="flex items-center space-x-2">
+              <Filter className="w-4 h-4 text-gray-500" />
+              <select
+                value={statusFilter}
+                onChange={(e) => handleStatusFilter(e.target.value)}
+                className="border border-gray-300 rounded-md px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
+              >
+                <option value="all">All Status</option>
+                <option value="received">Received</option>
+                <option value="processing">Processing</option>
+                <option value="stored">Stored</option>
+                <option value="ready_for_release">Ready for Release</option>
+                <option value="delivered">Delivered</option>
+              </select>
+            </div>
+          </div>
+        </div>
+
+        {/* Receipts List */}
+        <div className="p-6">
+          {receipts.length === 0 ? (
+            <div className="text-center py-12">
+              <Package className="w-16 h-16 mx-auto mb-4 text-gray-300" />
+              <h3 className="text-lg font-medium text-gray-900 mb-2">No warehouse receipts found</h3>
+              <p className="text-gray-600 mb-4">Create your first receipt to get started</p>
+              <button
+                onClick={() => setShowCreateForm(true)}
+                className="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700"
+              >
+                Create Receipt
+              </button>
+            </div>
+          ) : (
+            <div className="space-y-4">
+              {receipts.map((receipt) => (
+                <div 
+                  key={receipt.id} 
+                  className="border border-gray-200 rounded-lg p-4 hover:bg-gray-50 cursor-pointer"
+                  onClick={() => setSelectedReceipt(receipt)}
+                >
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center space-x-4">
+                      <StatusIcon status={receipt.status} />
+                      <div>
+                        <div className="font-medium text-sm">{receipt.receipt_number}</div>
+                        <div className="text-xs text-gray-500">{receipt.tracking_number}</div>
+                      </div>
+                      <div className="text-sm">
+                        <div className="font-medium">{receipt.shipper_name}</div>
+                        <div className="text-gray-500">→ {receipt.consignee_name}</div>
+                      </div>
+                    </div>
+                    <div className="flex items-center space-x-4">
+                      <div className="text-right text-sm">
+                        <div className="font-medium">{receipt.total_pieces} pcs</div>
+                        <div className="text-gray-500">{receipt.total_weight_lb} lbs</div>
+                      </div>
+                      <StatusBadge status={receipt.status} />
+                      <div className="text-right text-xs text-gray-500">
+                        {new Date(receipt.received_date).toLocaleDateString()}
+                      </div>
+                      {receipt.attachment_count > 0 && (
+                        <div className="flex items-center space-x-1 text-xs text-gray-500">
+                          <FileText className="w-3 h-3" />
+                          <span>{receipt.attachment_count}</span>
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+      </div>
+
+      {/* Modals */}
+      {showCreateForm && <CreateReceiptModal />}
+      {selectedReceipt && (
+        <ReceiptDetailModal 
+          receipt={selectedReceipt} 
+          onClose={() => setSelectedReceipt(null)} 
+        />
+      )}
+    </>
+  );
+};
+
+export default WarehouseReceiptManager;
