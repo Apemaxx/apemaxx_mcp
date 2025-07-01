@@ -1,0 +1,100 @@
+import React, { useState, useEffect } from 'react';
+import { supabase, warehouseReceiptService } from '../lib/supabase';
+import { Upload, Plus, Search, FileText, Camera, Package, Truck, Calendar, User, MapPin, DollarSign, Eye, Edit, Trash2, Download, Link, CheckCircle, Clock, AlertCircle } from 'lucide-react';
+
+const WarehouseReceiptManager = () => {
+  const [user, setUser] = useState(null);
+  const [receipts, setReceipts] = useState([]);
+  const [addressBook, setAddressBook] = useState([]);
+  const [analytics, setAnalytics] = useState(null);
+  const [loading, setLoading] = useState(true);
+  const [activeTab, setActiveTab] = useState('overview');
+  const [showCreateForm, setShowCreateForm] = useState(false);
+  const [selectedReceipt, setSelectedReceipt] = useState(null);
+  const [searchTerm, setSearchTerm] = useState('');
+  const [statusFilter, setStatusFilter] = useState('all');
+
+  useEffect(() => {
+    checkUser();
+    loadData();
+  }, []);
+
+  const checkUser = async () => {
+    const { data: { user } } = await supabase.auth.getUser();
+    setUser(user);
+  };
+
+  const loadData = async () => {
+    try {
+      setLoading(true);
+      const { data: { user } } = await supabase.auth.getUser();
+      
+      if (user) {
+        const [receiptsData, addressData, analyticsData] = await Promise.all([
+          warehouseReceiptService.getReceipts(user.id),
+          warehouseReceiptService.getAddressBook(user.id),
+          warehouseReceiptService.getAnalytics(user.id)
+        ]);
+        
+        setReceipts(receiptsData || []);
+        setAddressBook(addressData || []);
+        setAnalytics(analyticsData);
+      }
+    } catch (error) {
+      console.error('Error loading data:', error);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleCreateReceipt = async (formData) => {
+    try {
+      const receipt = await warehouseReceiptService.createReceipt({
+        ...formData,
+        user_id: user.id,
+        WR_receipt_number: await generateReceiptNumber(),
+        received_date: new Date().toISOString(),
+        status: 'received'
+      });
+      
+      await loadData(); // Refresh data
+      setShowCreateForm(false);
+      
+      return receipt;
+    } catch (error) {
+      console.error('Error creating receipt:', error);
+      alert('Error creating warehouse receipt');
+    }
+  };
+
+  const handleFileUpload = async (files, receiptId, type = 'documents') => {
+    try {
+      const uploadPromises = Array.from(files).map(file => 
+        warehouseReceiptService.uploadFile(file, receiptId, type)
+      );
+      
+      await Promise.all(uploadPromises);
+      await loadData(); // Refresh data
+      
+      alert('Files uploaded successfully!');
+    } catch (error) {
+      console.error('Error uploading files:', error);
+      alert('Error uploading files');
+    }
+  };
+
+  const generateReceiptNumber = async () => {
+    // Generate unique receipt number
+    const date = new Date().toISOString().slice(0, 10).replace(/-/g, '');
+    const random = Math.floor(Math.random() * 10000).toString().padStart(4, '0');
+    return `WR${date}${random}`;
+  };
+
+  // ... rest of your component logic (the existing component code from the artifact)
+  
+  return (
+    // ... your JSX (use the existing component JSX from the artifact)
+  );
+};
+
+export default WarehouseReceiptManager;

@@ -1,0 +1,93 @@
+import { createClient } from '@supabase/supabase-js'
+
+const supabaseUrl = import.meta.env.VITE_SUPABASE_URL
+const supabaseAnonKey = import.meta.env.VITE_SUPABASE_ANON_KEY
+
+export const supabase = createClient(supabaseUrl, supabaseAnonKey)
+
+// Warehouse Receipt Functions
+export const warehouseReceiptService = {
+  // Get all warehouse receipts for user
+  async getReceipts(userId) {
+    const { data, error } = await supabase
+      .from('warehouse_receipt_summary')
+      .select('*')
+      .eq('user_id', userId)
+      .order('received_date', { ascending: false })
+    
+    if (error) throw error
+    return data
+  },
+
+  // Create new warehouse receipt
+  async createReceipt(receiptData) {
+    const { data, error } = await supabase
+      .from('warehouse_receipts')
+      .insert([receiptData])
+      .select()
+    
+    if (error) throw error
+    return data[0]
+  },
+
+  // Upload file to storage
+  async uploadFile(file, receiptId, type = 'documents') {
+    const fileExt = file.name.split('.').pop()
+    const fileName = `${receiptId}/${type}/${Date.now()}.${fileExt}`
+    
+    const { data, error } = await supabase.storage
+      .from('warehouse-documents')
+      .upload(fileName, file)
+    
+    if (error) throw error
+    
+    // Save file reference to database
+    const { data: attachment } = await supabase
+      .from('warehouse_receipt_attachments')
+      .insert([{
+        warehouse_receipt_id: receiptId,
+        file_name: file.name,
+        file_path: data.path,
+        file_type: fileExt,
+        file_size: file.size,
+        mime_type: file.type
+      }])
+      .select()
+    
+    return attachment[0]
+  },
+
+  // Get address book entries
+  async getAddressBook(userId) {
+    const { data, error } = await supabase
+      .from('address_book')
+      .select('*')
+      .eq('user_id', userId)
+      .eq('is_active', true)
+    
+    if (error) throw error
+    return data
+  },
+
+  // Link to booking
+  async linkToBooking(receiptId, bookingId) {
+    const { data, error } = await supabase
+      .from('warehouse_receipt_bookings')
+      .insert([{ warehouse_receipt_id: receiptId, booking_id: bookingId }])
+    
+    if (error) throw error
+    return data
+  },
+
+  // Get analytics
+  async getAnalytics(userId, daysBack = 30) {
+    const { data, error } = await supabase
+      .rpc('get_warehouse_analytics', {
+        user_uuid: userId,
+        days_back: daysBack
+      })
+    
+    if (error) throw error
+    return data
+  }
+}
