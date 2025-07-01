@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { useAuth } from '@/contexts/AuthContext';
+import { useAuth } from '@/components/auth-provider';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
@@ -11,7 +11,7 @@ export default function Login() {
   const [password, setPassword] = useState('');
   const [isLoading, setIsLoading] = useState(false);
   const [isRegister, setIsRegister] = useState(false);
-  const { signIn, signUp } = useAuth();
+  const { login, register } = useAuth();
   const { toast } = useToast();
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -21,38 +21,22 @@ export default function Login() {
     setIsLoading(true);
     try {
       if (isRegister) {
-        const { error } = await signUp(email, password);
-        if (error) {
-          toast({
-            title: 'Registration failed',
-            description: error.message,
-            variant: 'destructive',
-          });
-        } else {
-          toast({
-            title: 'Account created',
-            description: 'Welcome to the logistics command center!',
-          });
-        }
+        await register(email, password);
+        toast({
+          title: 'Account created',
+          description: 'Welcome to the logistics command center!',
+        });
       } else {
-        const { error } = await signIn(email, password);
-        if (error) {
-          toast({
-            title: 'Sign in failed',
-            description: error.message,
-            variant: 'destructive',
-          });
-        } else {
-          toast({
-            title: 'Welcome back',
-            description: 'Successfully signed in to your account.',
-          });
-        }
+        await login(email, password);
+        toast({
+          title: 'Welcome back',
+          description: 'Successfully signed in to your account.',
+        });
       }
     } catch (error) {
       toast({
         title: 'Authentication failed',
-        description: error instanceof Error ? error.message : 'An unexpected error occurred',
+        description: error instanceof Error ? error.message : 'An error occurred',
         variant: 'destructive',
       });
     } finally {

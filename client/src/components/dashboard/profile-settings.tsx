@@ -1,4 +1,5 @@
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect } from 'react';
+import { useQuery, useMutation } from '@tanstack/react-query';
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -6,17 +7,14 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { useToast } from "@/hooks/use-toast";
-import { useAuth } from "@/contexts/AuthContext";
-import { Profile, updateUserProfile } from "@/lib/supabase";
+import { apiRequest, queryClient } from "@/lib/queryClient";
+import { Profile } from "@shared/schema";
 import { User, Building, Phone, MapPin, Globe, Briefcase, Save, Edit3, Camera, Upload } from 'lucide-react';
 import { Avatar, AvatarImage, AvatarFallback } from '@/components/ui/avatar';
 
 export function ProfileSettings() {
   const { toast } = useToast();
-  const { user, profile, loading, updateProfile, refreshProfile } = useAuth();
   const [isEditing, setIsEditing] = useState(false);
-  const [isSaving, setIsSaving] = useState(false);
-  const fileInputRef = useRef<HTMLInputElement>(null);
   const [formData, setFormData] = useState({
     name: '',
     email: '',
@@ -26,8 +24,13 @@ export function ProfileSettings() {
     bio: '',
     location: '',
     website: '',
-    job_title: '',
-    avatar_url: '',
+    jobTitle: '',
+    avatarUrl: '',
+  });
+
+  // Fetch current profile data
+  const { data: profile, isLoading } = useQuery<Profile>({
+    queryKey: ['/api/profile'],
   });
 
   // Update form data when profile loads
@@ -42,40 +45,38 @@ export function ProfileSettings() {
         bio: profile.bio || '',
         location: profile.location || '',
         website: profile.website || '',
-        job_title: profile.job_title || '',
-        avatar_url: profile.avatar_url || '',
+        jobTitle: profile.jobTitle || '',
+        avatarUrl: profile.avatarUrl || '',
       });
     }
   }, [profile]);
 
-  const handleSave = async () => {
-    if (!user) return;
-    
-    setIsSaving(true);
-    try {
-      const success = await updateProfile(formData);
-      if (success) {
-        toast({
-          title: "Profile updated",
-          description: "Your profile has been updated successfully",
-        });
-        setIsEditing(false);
-      } else {
-        toast({
-          title: "Update failed",
-          description: "There was an error updating your profile",
-          variant: "destructive",
-        });
-      }
-    } catch (error) {
+  // Update profile mutation
+  const updateProfileMutation = useMutation({
+    mutationFn: (data: any) => apiRequest('/api/profile', {
+      method: 'PATCH',
+      body: JSON.stringify(data),
+      headers: { 'Content-Type': 'application/json' },
+    }),
+    onSuccess: () => {
+      toast({
+        title: "Profile updated",
+        description: "Your profile has been updated successfully",
+      });
+      setIsEditing(false);
+      queryClient.invalidateQueries({ queryKey: ['/api/profile'] });
+    },
+    onError: () => {
       toast({
         title: "Update failed",
         description: "There was an error updating your profile",
         variant: "destructive",
       });
-    } finally {
-      setIsSaving(false);
-    }
+    },
+  });
+
+  const handleSave = () => {
+    updateProfileMutation.mutate(formData);
   };
 
   const handleCancel = () => {
@@ -89,50 +90,20 @@ export function ProfileSettings() {
         bio: profile.bio || '',
         location: profile.location || '',
         website: profile.website || '',
-        job_title: profile.job_title || '',
-        avatar_url: profile.avatar_url || '',
+        jobTitle: profile.jobTitle || '',
+        avatarUrl: profile.avatarUrl || '',
       });
     }
     setIsEditing(false);
   };
 
-  const handleAvatarUpload = (event: React.ChangeEvent<HTMLInputElement>) => {
-    const file = event.target.files?.[0];
-    if (file) {
-      // Convert file to base64 for preview and storage
-      const reader = new FileReader();
-      reader.onload = (e) => {
-        const base64String = e.target?.result?.toString();
-        if (base64String) {
-          setFormData(prev => ({ ...prev, avatar_url: base64String }));
-        }
-      };
-      reader.readAsDataURL(file);
-    }
-  };
-
-  const handleInputChange = (field: string, value: string) => {
-    setFormData(prev => ({ ...prev, [field]: value }));
-  };
-
-  if (loading) {
+  if (isLoading) {
     return (
       <div className="flex items-center justify-center p-8">
         <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary-custom"></div>
       </div>
     );
   }
-
-  const getInitials = () => {
-    if (formData.name) {
-      const names = formData.name.split(' ');
-      if (names.length >= 2) {
-        return `${names[0].charAt(0)}${names[names.length - 1].charAt(0)}`.toUpperCase();
-      }
-      return formData.name.charAt(0).toUpperCase();
-    }
-    return user?.email?.charAt(0).toUpperCase() || 'U';
-  };
 
   return (
     <div className="space-y-6">
@@ -150,11 +121,11 @@ export function ProfileSettings() {
               </Button>
               <Button 
                 onClick={handleSave}
-                disabled={isSaving}
+                disabled={updateProfileMutation.isPending}
                 className="bg-primary-custom hover:bg-primary-custom/90"
               >
                 <Save className="w-4 h-4 mr-2" />
-                {isSaving ? 'Saving...' : 'Save Changes'}
+                {updateProfileMutation.isPending ? 'Saving...' : 'Save Changes'}
               </Button>
             </>
           ) : (
@@ -177,7 +148,7 @@ export function ProfileSettings() {
         <CardContent className="space-y-4">
           <div className="flex items-center gap-6">
             <Avatar className="w-20 h-20">
-              <AvatarImage src={formData.avatar_url} alt="Profile picture" />
+              <AvatarImage src={formData.avatarUrl} alt="Profile picture" />
               <AvatarFallback className="bg-primary-custom text-white text-lg">
                 {formData.name ? formData.name.split(' ').map(n => n[0]).join('').toUpperCase() : 'U'}
               </AvatarFallback>
@@ -198,7 +169,7 @@ export function ProfileSettings() {
                       if (file) {
                         const reader = new FileReader();
                         reader.onload = (event) => {
-                          setFormData({ ...formData, avatar_url: event.target?.result as string });
+                          setFormData({ ...formData, avatarUrl: event.target?.result as string });
                         };
                         reader.readAsDataURL(file);
                       }
@@ -213,12 +184,12 @@ export function ProfileSettings() {
                     <Upload className="w-4 h-4 mr-2" />
                     Upload Photo
                   </Button>
-                  {formData.avatar_url && (
+                  {formData.avatarUrl && (
                     <Button
                       type="button"
                       variant="outline"
                       size="sm"
-                      onClick={() => setFormData({ ...formData, avatar_url: '' })}
+                      onClick={() => setFormData({ ...formData, avatarUrl: '' })}
                     >
                       Remove
                     </Button>
@@ -263,8 +234,8 @@ export function ProfileSettings() {
               <Label htmlFor="jobTitle">Job Title</Label>
               <Input
                 id="jobTitle"
-                value={formData.job_title}
-                onChange={(e) => setFormData({ ...formData, job_title: e.target.value })}
+                value={formData.jobTitle}
+                onChange={(e) => setFormData({ ...formData, jobTitle: e.target.value })}
                 disabled={!isEditing}
               />
             </div>

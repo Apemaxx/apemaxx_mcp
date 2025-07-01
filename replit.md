@@ -137,12 +137,6 @@ The application uses the following main entities:
   - JWT tokens generated correctly for app-level authorization
   - All existing users can login successfully
   - Frontend Supabase client created for direct database queries
-- July 1, 2025: **PROFILE INTEGRATION COMPLETED**: Real Supabase profile data integration
-  - Fixed critical column mapping issue (profiles table uses 'id' as primary key, not 'user_id')
-  - Added professional avatar photo upload functionality with file input and preview
-  - Removed profit upload component from dashboard header as requested
-  - Profile settings page displays real user data from Supabase profiles table
-  - User menu shows real profile information (name, avatar, job title) from database
 
 ## Current Status
 - ✅ **AUTHENTICATION COMPLETELY WORKING** with Supabase Auth (signInWithPassword)
@@ -151,10 +145,6 @@ The application uses the following main entities:
 - ✅ Dashboard displaying real data with MemoryStorage
 - ✅ All components functional and preserved
 - ✅ Supabase client available for frontend components
-- ✅ **PROFILE SYSTEM FULLY INTEGRATED** with real Supabase profiles table
-- ✅ Avatar photo upload functionality working with base64 encoding
-- ✅ User menu displays real profile data (name, avatar, job title)
-- ✅ Profit upload component removed from header as requested
 - ✅ Ready for extending dashboard features to use real Supabase tables (shipments, bookings, etc.)
 - ✅ Project bqmpupymchanohpfzglw fully integrated and operational
 
