@@ -70,12 +70,13 @@ export class MemoryStorage implements IStorage {
   }
 
   async getProfile(userId: string): Promise<Profile | undefined> {
-    return this.profiles.find(profile => profile.id === userId);
+    return this.profiles.find(profile => profile.userId === userId);
   }
 
   async createProfile(profile: InsertProfile): Promise<Profile> {
     const newProfile: Profile = {
       id: profile.id || `profile_${this.profiles.length + 1}`,
+      userId: profile.userId,
       email: profile.email || null,
       name: profile.name || null,
       company: profile.company || null,
@@ -469,22 +470,19 @@ export class MemoryStorage implements IStorage {
     const sampleProfile: Profile = {
       id: 'profile_1',
       userId: 'user_1',
-      firstName: 'Ricardo',
-      lastName: 'Lopes',
+      email: 'ricardo.lopes@apemax.com',
+      name: 'Ricardo Lopes',
+      company: 'APE MAXX Logistics',
+      phone: '+1 (305) 555-0123',
+      language: 'en',
+      llmApiKey: null,
       avatarUrl: 'https://images.unsplash.com/photo-1472099645785-5658abf4ff4e?w=150&h=150&fit=crop&crop=face',
       bio: 'Experienced logistics manager with 8+ years in international freight and supply chain optimization.',
       location: 'Miami, FL',
-      website: null,
+      website: 'https://apemax.com',
       jobTitle: 'Senior Logistics Manager',
       organizationId: null,
-      // Default profit margins
-      defaultProfitMargin: "15.00",
-      seaFreightMargin: "12.00",
-      airFreightMargin: "18.00",
-      landFreightMargin: "15.00",
-      warehouseMargin: "20.00",
-      customsMargin: "25.00",
-      insuranceMargin: "30.00",
+      createdAt: new Date(),
       updatedAt: new Date(),
     };
     this.profiles.push(sampleProfile);
