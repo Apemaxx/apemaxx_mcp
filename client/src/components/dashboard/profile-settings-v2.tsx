@@ -8,6 +8,7 @@ import { useAuth } from '../auth-provider';
 import { apiRequest } from '../../lib/api';
 import { useToast } from '../../hooks/use-toast';
 import { X, Upload } from 'lucide-react';
+import { supabase } from '../../lib/supabase';
 
 interface ProfileSettingsV2Props {
   isOpen: boolean;
@@ -38,35 +39,17 @@ export default function ProfileSettingsV2({ isOpen, onClose }: ProfileSettingsV2
   const queryClient = useQueryClient();
   const [uploading, setUploading] = useState(false);
   
-  // Use direct profile data for Flavio Campos
-  const profile = user ? {
-    id: user.id,
-    name: 'Flavio Campos',
-    email: 'fafgcus@gmail.com',
-    phone: '19546693524',
-    company: 'APE Global',
-    job_title: 'Operations Manager',
-    bio: 'Logistics operations expert specializing in freight management and supply chain optimization.',
-    location: 'Miami, FL',
-    website: 'https://apeglobal.io',
-    language: 'pt',
-    avatar_url: null,
-    llm_api_key: null,
-    organization_id: null,
-    created_at: new Date(),
-    updated_at: new Date(),
-  } : null;
-  
+  // Initialize form data with empty values
   const [formData, setFormData] = useState({
-    name: profile?.name || '',
-    email: profile?.email || '',
-    company: profile?.company || '',
-    phone: profile?.phone || '',
-    bio: profile?.bio || '',
-    location: profile?.location || '',
-    website: profile?.website || '',
-    job_title: profile?.job_title || '',
-    avatar_url: profile?.avatar_url || '',
+    name: '',
+    email: '',
+    company: '',
+    phone: '',
+    bio: '',
+    location: '',
+    website: '',
+    job_title: '',
+    avatar_url: '',
   });
 
   // Load profile data using React Query
@@ -112,20 +95,20 @@ export default function ProfileSettingsV2({ isOpen, onClose }: ProfileSettingsV2
 
   // Update form data when profile loads
   useEffect(() => {
-    if (profile) {
+    if (profileData) {
       setFormData({
-        name: profile.name || '',
-        email: profile.email || '',
-        company: profile.company || '',
-        phone: profile.phone || '',
-        bio: profile.bio || '',
-        location: profile.location || '',
-        website: profile.website || '',
-        job_title: profile.job_title || '',
-        avatar_url: profile.avatar_url || '',
+        name: profileData.name || '',
+        email: profileData.email || '',
+        company: profileData.company || '',
+        phone: profileData.phone || '',
+        bio: profileData.bio || '',
+        location: profileData.location || '',
+        website: profileData.website || '',
+        job_title: profileData.job_title || '',
+        avatar_url: profileData.avatar_url || '',
       });
     }
-  }, [profile]);
+  }, [profileData]);
 
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const { name, value } = e.target;
@@ -147,15 +130,61 @@ export default function ProfileSettingsV2({ isOpen, onClose }: ProfileSettingsV2
       const file = event.target.files?.[0];
       if (!file) return;
 
-      // Create FormData for file upload
-      const uploadFormData = new FormData();
-      uploadFormData.append('file', file);
+      // Validate file type and size
+      if (!file.type.startsWith('image/')) {
+        toast({
+          title: "Invalid file type",
+          description: "Please select an image file",
+          variant: "destructive",
+        });
+        return;
+      }
 
-      // This would typically be a separate upload endpoint
-      // For now, we'll just update the avatar_url with a placeholder
+      if (file.size > 5 * 1024 * 1024) { // 5MB limit
+        toast({
+          title: "File too large",
+          description: "Please select an image smaller than 5MB",
+          variant: "destructive",
+        });
+        return;
+      }
+
+      // Generate unique filename
+      const fileExt = file.name.split('.').pop();
+      const fileName = `${user?.id}-${Math.random()}.${fileExt}`;
+
+      // Upload to Supabase Storage
+      const { data, error } = await supabase.storage
+        .from('avatars')
+        .upload(fileName, file, { 
+          cacheControl: '3600',
+          upsert: false 
+        });
+
+      if (error) {
+        console.error('Storage upload error:', error);
+        toast({
+          title: "Upload failed",
+          description: error.message || "Failed to upload avatar",
+          variant: "destructive",
+        });
+        return;
+      }
+
+      // Get public URL
+      const { data: { publicUrl } } = supabase.storage
+        .from('avatars')
+        .getPublicUrl(fileName);
+
+      // Update form data with new avatar URL
+      setFormData(prev => ({
+        ...prev,
+        avatar_url: publicUrl
+      }));
+
       toast({
-        title: "Upload feature",
-        description: "Avatar upload will be implemented with file storage service",
+        title: "Avatar uploaded",
+        description: "Your profile picture has been uploaded successfully",
       });
       
     } catch (error) {
