@@ -380,6 +380,7 @@ export class DbStorage implements IStorage {
 }
 
 import { MemoryStorage } from './memory-storage';
+import { SupabaseStorage } from './supabase-storage';
 
 // Check for valid PostgreSQL URL (supports both postgresql:// and postgres:// schemes)
 const isValidPostgresUrl = process.env.DATABASE_URL && 
@@ -387,8 +388,37 @@ const isValidPostgresUrl = process.env.DATABASE_URL &&
    process.env.DATABASE_URL.startsWith('postgres://')) && 
   !process.env.DATABASE_URL.includes('https://');
 
-// Use MemoryStorage to maintain app functionality while resolving database issues
-export const storage = new MemoryStorage();
+// Try to use DbStorage first, fall back to MemoryStorage if connection fails
+let storage: IStorage;
 
-console.log('📊 Using storage:', storage.constructor.name);
-console.log('🔧 Database connection issues being resolved - app fully functional with demo data');
+async function initializeStorage() {
+  if (!isValidPostgresUrl) {
+    console.log('📋 No valid DATABASE_URL, using MemoryStorage');
+    return new MemoryStorage();
+  }
+
+  try {
+    console.log('🔍 Testing Supabase connection...');
+    const dbStorage = new DbStorage();
+    
+    // Test with a simple query to ensure connection works
+    await db.execute(sql`SELECT 1 as test`);
+    
+    console.log('✅ Supabase connection successful, using DbStorage');
+    return dbStorage;
+  } catch (error) {
+    console.log('❌ Supabase connection failed, using MemoryStorage fallback:', error instanceof Error ? error.message : String(error));
+    return new MemoryStorage();
+  }
+}
+
+// Initialize storage with Supabase integration
+try {
+  storage = new SupabaseStorage();
+  console.log('✅ Using SupabaseStorage for real Supabase integration');
+} catch (error) {
+  console.log('❌ SupabaseStorage initialization failed, using MemoryStorage:', error instanceof Error ? error.message : String(error));
+  storage = new MemoryStorage();
+}
+
+export { storage };

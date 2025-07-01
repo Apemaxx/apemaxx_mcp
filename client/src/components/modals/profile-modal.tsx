@@ -23,6 +23,7 @@ export function ProfileModal({ open, onOpenChange }: ProfileModalProps) {
   const { data: profile, isLoading } = useQuery({
     queryKey: ['/api/profile'],
     enabled: open,
+    retry: false,
   });
 
   const [formData, setFormData] = useState({
