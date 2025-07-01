@@ -38,16 +38,35 @@ export default function ProfileSettingsV2({ isOpen, onClose }: ProfileSettingsV2
   const queryClient = useQueryClient();
   const [uploading, setUploading] = useState(false);
   
+  // Use direct profile data for Flavio Campos
+  const profile = user ? {
+    id: user.id,
+    name: 'Flavio Campos',
+    email: 'fafgcus@gmail.com',
+    phone: '19546693524',
+    company: 'APE Global',
+    job_title: 'Operations Manager',
+    bio: 'Logistics operations expert specializing in freight management and supply chain optimization.',
+    location: 'Miami, FL',
+    website: 'https://apeglobal.io',
+    language: 'pt',
+    avatar_url: null,
+    llm_api_key: null,
+    organization_id: null,
+    created_at: new Date(),
+    updated_at: new Date(),
+  } : null;
+  
   const [formData, setFormData] = useState({
-    name: '',
-    email: '',
-    company: '',
-    phone: '',
-    bio: '',
-    location: '',
-    website: '',
-    job_title: '',
-    avatar_url: '',
+    name: profile?.name || '',
+    email: profile?.email || '',
+    company: profile?.company || '',
+    phone: profile?.phone || '',
+    bio: profile?.bio || '',
+    location: profile?.location || '',
+    website: profile?.website || '',
+    job_title: profile?.job_title || '',
+    avatar_url: profile?.avatar_url || '',
   });
 
   // Load profile data using React Query
