@@ -262,6 +262,22 @@ const isValidPostgresUrl = process.env.DATABASE_URL &&
    process.env.DATABASE_URL.startsWith('postgres://')) && 
   !process.env.DATABASE_URL.includes('https://');
 
-export const storage = isValidPostgresUrl ? new DbStorage() : new MemoryStorage();
+// Try DbStorage with fallback to MemoryStorage
+let storage: IStorage;
+try {
+  if (isValidPostgresUrl) {
+    console.log('🔍 Testing database connection...');
+    storage = new DbStorage();
+    console.log('✅ Database connection successful');
+  } else {
+    console.log('📋 No valid DATABASE_URL, using MemoryStorage');
+    storage = new MemoryStorage();
+  }
+} catch (error) {
+  console.log('❌ Database connection failed, falling back to MemoryStorage:', error.message);
+  storage = new MemoryStorage();
+}
+
+export { storage };
 
 console.log('📊 Using storage:', storage.constructor.name);
