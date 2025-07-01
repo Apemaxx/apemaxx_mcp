@@ -19,13 +19,29 @@ const authenticateToken = async (req: any, res: any, next: any) => {
   }
 
   try {
-    const decoded = jwt.verify(token, JWT_SECRET) as { userId: string };
+    console.log('🔍 Verifying token with Supabase...');
     
-    // For Supabase users, we just trust our JWT and use the userId
+    // Try to verify with Supabase first
+    const { data: { user }, error } = await supabase.auth.getUser(token);
+    
+    console.log('Supabase auth result:', { user: user?.id, error: error?.message });
+    
+    if (user && !error) {
+      // Valid Supabase token
+      console.log('✅ Supabase token verified for user:', user.id);
+      req.user = { id: user.id, email: user.email };
+      return next();
+    }
+    
+    console.log('❌ Supabase verification failed, trying custom JWT...');
+    
+    // Fallback to our custom JWT verification
+    const decoded = jwt.verify(token, JWT_SECRET) as { userId: string };
+    console.log('✅ Custom JWT verified for user:', decoded.userId);
     req.user = { id: decoded.userId, email: null };
     next();
   } catch (error) {
-    console.error('Token verification error:', error);
+    console.error('❌ Token verification failed:', error);
     return res.status(403).json({ message: 'Invalid token' });
   }
 };
