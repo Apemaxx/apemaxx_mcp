@@ -1,5 +1,4 @@
 import { UserMenu } from '@/components/dashboard/user-menu';
-import { ProfitUpload } from '@/components/dashboard/profit-upload';
 import { KPIMetrics } from '@/components/dashboard/kpi-metrics';
 import { QuickActions } from '@/components/dashboard/quick-actions';
 import { ConsolidationPlan } from '@/components/dashboard/consolidation-plan';
@@ -18,7 +17,6 @@ export default function Dashboard() {
           <p className="text-gray-600 mt-1">Welcome back! Here is your AI-powered overview for today.</p>
         </div>
         <div className="flex items-center gap-3">
-          <ProfitUpload />
           <UserMenu />
         </div>
       </header>
