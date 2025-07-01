@@ -14,11 +14,27 @@ export function UserMenu() {
 
   // Load profile data using React Query and our backend API
   const { data: profile, refetch: refetchProfile, isLoading } = useQuery({
-    queryKey: ['/api/profile', user?.id], // Include user ID to avoid cache conflicts
+    queryKey: ['/api/profile', user?.id], // Simple cache key
     enabled: !!user?.id,
     staleTime: 0, // Always fetch fresh data
-    gcTime: 0, // Don't cache the result (gcTime is the new name for cacheTime in React Query v5)
+    gcTime: 0, // Don't cache the result
+    retry: 3,
   });
+
+  // Debug logging and force refetch on user ID change
+  useEffect(() => {
+    console.log('UserMenu - User ID:', user?.id);
+    console.log('UserMenu - Profile data:', profile);
+    console.log('UserMenu - Profile type:', typeof profile);
+    console.log('UserMenu - Profile keys:', profile ? Object.keys(profile) : 'null');
+    console.log('UserMenu - Loading:', isLoading);
+    
+    // Force refetch when user ID is available but profile is null
+    if (user?.id && !profile && !isLoading) {
+      console.log('🔄 Forcing profile refetch...');
+      refetchProfile();
+    }
+  }, [user?.id, profile, isLoading, refetchProfile]);
 
   const getDisplayName = () => {
     const profileData = profile as any;
