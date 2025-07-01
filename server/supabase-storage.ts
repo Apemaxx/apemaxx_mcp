@@ -143,7 +143,7 @@ export class SupabaseStorage implements IStorage {
     const { data, error } = await supabase
       .from('profiles')
       .select('*')
-      .eq('user_id', userId)
+      .eq('id', userId)
       .single();
     
     if (error) {
@@ -176,7 +176,7 @@ export class SupabaseStorage implements IStorage {
     const { data, error } = await supabase
       .from('profiles')
       .update({ ...profile, updated_at: new Date().toISOString() })
-      .eq('user_id', userId)
+      .eq('id', userId)
       .select()
       .single();
     

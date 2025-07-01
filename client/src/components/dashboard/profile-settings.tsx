@@ -9,7 +9,8 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { useToast } from "@/hooks/use-toast";
 import { apiRequest, queryClient } from "@/lib/queryClient";
 import { Profile } from "@shared/schema";
-import { User, Building, Phone, MapPin, Globe, Briefcase, Save, Edit3 } from 'lucide-react';
+import { User, Building, Phone, MapPin, Globe, Briefcase, Save, Edit3, Camera, Upload } from 'lucide-react';
+import { Avatar, AvatarImage, AvatarFallback } from '@/components/ui/avatar';
 
 export function ProfileSettings() {
   const { toast } = useToast();
@@ -24,6 +25,7 @@ export function ProfileSettings() {
     location: '',
     website: '',
     jobTitle: '',
+    avatarUrl: '',
   });
 
   // Fetch current profile data
@@ -44,6 +46,7 @@ export function ProfileSettings() {
         location: profile.location || '',
         website: profile.website || '',
         jobTitle: profile.jobTitle || '',
+        avatarUrl: profile.avatarUrl || '',
       });
     }
   }, [profile]);
@@ -88,6 +91,7 @@ export function ProfileSettings() {
         location: profile.location || '',
         website: profile.website || '',
         jobTitle: profile.jobTitle || '',
+        avatarUrl: profile.avatarUrl || '',
       });
     }
     setIsEditing(false);
@@ -132,6 +136,70 @@ export function ProfileSettings() {
           )}
         </div>
       </div>
+
+      {/* Profile Photo Section */}
+      <Card>
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2">
+            <Camera className="w-5 h-5" />
+            Profile Photo
+          </CardTitle>
+        </CardHeader>
+        <CardContent className="space-y-4">
+          <div className="flex items-center gap-6">
+            <Avatar className="w-20 h-20">
+              <AvatarImage src={formData.avatarUrl} alt="Profile picture" />
+              <AvatarFallback className="bg-primary-custom text-white text-lg">
+                {formData.name ? formData.name.split(' ').map(n => n[0]).join('').toUpperCase() : 'U'}
+              </AvatarFallback>
+            </Avatar>
+            <div className="space-y-2">
+              <p className="text-sm text-gray-600">
+                Upload a new profile photo. JPG, PNG or GIF format. Max size 5MB.
+              </p>
+              {isEditing && (
+                <div className="flex gap-2">
+                  <input
+                    type="file"
+                    accept="image/*"
+                    className="hidden"
+                    id="avatar-upload"
+                    onChange={(e) => {
+                      const file = e.target.files?.[0];
+                      if (file) {
+                        const reader = new FileReader();
+                        reader.onload = (event) => {
+                          setFormData({ ...formData, avatarUrl: event.target?.result as string });
+                        };
+                        reader.readAsDataURL(file);
+                      }
+                    }}
+                  />
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="sm"
+                    onClick={() => document.getElementById('avatar-upload')?.click()}
+                  >
+                    <Upload className="w-4 h-4 mr-2" />
+                    Upload Photo
+                  </Button>
+                  {formData.avatarUrl && (
+                    <Button
+                      type="button"
+                      variant="outline"
+                      size="sm"
+                      onClick={() => setFormData({ ...formData, avatarUrl: '' })}
+                    >
+                      Remove
+                    </Button>
+                  )}
+                </div>
+              )}
+            </div>
+          </div>
+        </CardContent>
+      </Card>
 
       {/* Basic Information */}
       <Card>
