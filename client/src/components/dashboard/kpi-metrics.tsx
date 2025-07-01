@@ -1,10 +1,9 @@
 import { useQuery, useMutation } from '@tanstack/react-query';
+import { fetchAPI } from '@/lib/api';
 import { Card, CardContent } from '@/components/ui/card';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Button } from '@/components/ui/button';
-import { supabase } from '@/lib/supabase';
-import { useAuth } from '@/contexts/AuthContext';
-import { useQueryClient } from '@tanstack/react-query';
+import { apiRequest, queryClient } from '@/lib/queryClient';
 import { Plus } from 'lucide-react';
 
 interface KPIMetrics {
@@ -15,91 +14,18 @@ interface KPIMetrics {
 }
 
 export function KPIMetrics() {
-  const { user } = useAuth();
-  const queryClient = useQueryClient();
-
   const { data: metrics, isLoading, error } = useQuery<KPIMetrics>({
-    queryKey: ['kpi-metrics', user?.id],
-    queryFn: async () => {
-      if (!user?.id) throw new Error('User not authenticated');
-
-      console.log('Fetching KPI metrics from Supabase...');
-
-      // Get shipments in transit
-      const { count: shipmentsInTransit } = await supabase
-        .from('shipments')
-        .select('*', { count: 'exact', head: true })
-        .eq('user_id', user.id)
-        .in('status', ['in_transit', 'processing']);
-
-      // Get pending bookings
-      const { count: pendingBookings } = await supabase
-        .from('bookings')
-        .select('*', { count: 'exact', head: true })
-        .eq('user_id', user.id)
-        .eq('status', 'pending');
-
-      // Calculate monthly freight cost (sample data)
-      const monthlyFreightCost = 12450;
-
-      // Calculate on-time delivery rate (sample data)
-      const onTimeDeliveryRate = 98;
-
-      const kpiData = {
-        shipmentsInTransit: shipmentsInTransit || 42,
-        pendingBookings: pendingBookings || 12,
-        monthlyFreightCost,
-        onTimeDeliveryRate
-      };
-
-      console.log('KPI metrics fetched:', kpiData);
-      return kpiData;
-    },
-    refetchInterval: 30000,
-    enabled: !!user?.id
+    queryKey: ['/api/kpi-metrics'],
+    refetchInterval: 30000, // Refresh every 30 seconds
   });
 
   const initializeSampleDataMutation = useMutation({
-    mutationFn: async () => {
-      if (!user?.id) throw new Error('User not authenticated');
-      
-      console.log('Initializing sample data...');
-      
-      // Create sample shipment
-      const { error: shipmentError } = await supabase
-        .from('shipments')
-        .insert([{
-          user_id: user.id,
-          tracking_number: `TRK-${Date.now()}`,
-          carrier: 'DHL Express',
-          status: 'in_transit',
-          origin: 'Miami, FL',
-          destination: 'Santos, BR',
-          created_at: new Date().toISOString()
-        }]);
-
-      if (shipmentError) console.error('Error creating sample shipment:', shipmentError);
-
-      // Create sample booking
-      const { error: bookingError } = await supabase
-        .from('bookings')
-        .insert([{
-          user_id: user.id,
-          service_type: 'air_freight',
-          status: 'pending',
-          origin: 'Miami, FL',
-          destination: 'São Paulo, BR',
-          created_at: new Date().toISOString()
-        }]);
-
-      if (bookingError) console.error('Error creating sample booking:', bookingError);
-
-      return true;
-    },
+    mutationFn: () => apiRequest('/api/initialize-sample-data', 'POST', {}),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['kpi-metrics'] });
-      queryClient.invalidateQueries({ queryKey: ['shipments'] });
-      queryClient.invalidateQueries({ queryKey: ['bookings'] });
+      queryClient.invalidateQueries({ queryKey: ['/api/kpi-metrics'] });
+      queryClient.invalidateQueries({ queryKey: ['/api/shipments'] });
+      queryClient.invalidateQueries({ queryKey: ['/api/bookings'] });
+      queryClient.invalidateQueries({ queryKey: ['/api/ai-insights'] });
     },
   });
 

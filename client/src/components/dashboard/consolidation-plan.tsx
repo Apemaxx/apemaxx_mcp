@@ -1,9 +1,8 @@
 import { useQuery } from '@tanstack/react-query';
+import { fetchAPI } from '@/lib/api';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Progress } from '@/components/ui/progress';
 import { Skeleton } from '@/components/ui/skeleton';
-import { supabase } from '@/lib/supabase';
-import { useAuth } from '@/contexts/AuthContext';
 
 interface Consolidation {
   id: number;
@@ -17,42 +16,9 @@ interface Consolidation {
 }
 
 export function ConsolidationPlan() {
-  const { user } = useAuth();
-
   const { data: consolidation, isLoading, error } = useQuery<Consolidation>({
-    queryKey: ['consolidation-current', user?.id],
-    queryFn: async () => {
-      if (!user?.id) return null;
-
-      // Get current consolidation from Supabase
-      const { data, error } = await supabase
-        .from('consolidations')
-        .select('*')
-        .eq('user_id', user.id)
-        .eq('status', 'active')
-        .order('created_at', { ascending: false })
-        .limit(1)
-        .single();
-
-      if (error) {
-        console.error('Error fetching consolidation:', error);
-        // Return sample data matching the template
-        return {
-          id: 1,
-          planName: 'MIA-SANTOS-W25',
-          route: 'Miami → Santos',
-          currentVolume: '45',
-          maxVolume: '60',
-          bookingCount: 5,
-          etd: 'July 3, 2025',
-          status: 'active'
-        };
-      }
-
-      return data;
-    },
-    refetchInterval: 60000,
-    enabled: !!user?.id
+    queryKey: ['/api/consolidation/current'],
+    refetchInterval: 60000, // Refresh every minute
   });
 
   if (isLoading) {

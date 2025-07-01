@@ -1,9 +1,8 @@
 import { useQuery } from '@tanstack/react-query';
+import { fetchAPI } from '@/lib/api';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Ship, Truck, Warehouse } from 'lucide-react';
 import { Skeleton } from '@/components/ui/skeleton';
-import { supabase } from '@/lib/supabase';
-import { useAuth } from '@/contexts/AuthContext';
 
 interface TrackingEvent {
   id: number;
@@ -19,62 +18,9 @@ interface TrackingEvent {
 }
 
 export function LiveTracking() {
-  const { user } = useAuth();
-
   const { data: events, isLoading, error } = useQuery<TrackingEvent[]>({
-    queryKey: ['tracking-events', user?.id],
-    queryFn: async () => {
-      if (!user?.id) return [];
-
-      // Get recent tracking events from Supabase
-      const { data, error } = await supabase
-        .from('tracking_events')
-        .select(`
-          *,
-          shipment:shipments(tracking_number, carrier)
-        `)
-        .eq('user_id', user.id)
-        .order('created_at', { ascending: false })
-        .limit(5);
-
-      if (error) {
-        console.error('Error fetching tracking events:', error);
-        // Return sample data if no real data exists
-        return [
-          {
-            id: 1,
-            shipmentId: 1,
-            eventType: 'ship' as const,
-            location: 'Port of Miami, FL',
-            description: '#MAEU12345 departed from Container Terminal',
-            timestamp: new Date(Date.now() - 2 * 60 * 60 * 1000).toISOString(),
-            shipment: { trackingNumber: 'MAEU12345', carrier: 'Maersk' }
-          },
-          {
-            id: 2,
-            shipmentId: 2,
-            eventType: 'truck' as const,
-            location: 'On route, arriving tomorrow',
-            description: '#TQU39765 now processing at CFS',
-            timestamp: new Date(Date.now() - 4 * 60 * 60 * 1000).toISOString(),
-            shipment: { trackingNumber: 'TQU39765', carrier: 'TQL' }
-          },
-          {
-            id: 3,
-            shipmentId: 3,
-            eventType: 'warehouse' as const,
-            location: 'At CFS, awaiting consolidation',
-            description: '#WR23201 uploaded',
-            timestamp: new Date(Date.now() - 6 * 60 * 60 * 1000).toISOString(),
-            shipment: { trackingNumber: 'WR23201', carrier: 'Warehouse' }
-          }
-        ];
-      }
-
-      return data || [];
-    },
-    refetchInterval: 30000,
-    enabled: !!user?.id
+    queryKey: ['/api/tracking-events'],
+    refetchInterval: 30000, // Refresh every 30 seconds
   });
 
   const getEventIcon = (type: string) => {

@@ -1,9 +1,8 @@
 import { useQuery } from '@tanstack/react-query';
+import { fetchAPI } from '@/lib/api';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Sparkles, AlertTriangle, Lightbulb, Info } from 'lucide-react';
 import { Skeleton } from '@/components/ui/skeleton';
-import { supabase } from '@/lib/supabase';
-import { useAuth } from '@/contexts/AuthContext';
 
 interface AiInsight {
   id: number;
@@ -17,48 +16,9 @@ interface AiInsight {
 }
 
 export function AIInsights() {
-  const { user } = useAuth();
-
   const { data: insights, isLoading, error } = useQuery<AiInsight[]>({
-    queryKey: ['ai-insights', user?.id],
-    queryFn: async () => {
-      if (!user?.id) return [];
-
-      // Get AI insights from Supabase
-      const { data, error } = await supabase
-        .from('ai_insights')
-        .select('*')
-        .eq('user_id', user.id)
-        .order('created_at', { ascending: false })
-        .limit(5);
-
-      if (error) {
-        console.error('Error fetching AI insights:', error);
-        // Return sample data matching the template
-        return [
-          {
-            id: 1,
-            type: 'alert' as const,
-            title: 'Alert',
-            message: 'Shipment #MAEU12345 is delayed by 2 days. Notify Consignee',
-            isRead: false,
-            createdAt: new Date().toISOString()
-          },
-          {
-            id: 2,
-            type: 'opportunity' as const,
-            title: 'Opportunity',
-            message: 'Consolidate your 4 LCL shipments to Panama this week to save an estimated $900. Create Plan',
-            isRead: false,
-            createdAt: new Date().toISOString()
-          }
-        ];
-      }
-
-      return data || [];
-    },
-    refetchInterval: 60000,
-    enabled: !!user?.id
+    queryKey: ['/api/ai-insights'],
+    refetchInterval: 60000, // Refresh every minute
   });
 
   const getInsightIcon = (type: string) => {
