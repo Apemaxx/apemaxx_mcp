@@ -8,12 +8,34 @@ async function discoverProfilesSchema() {
   
   console.log('=== DISCOVERING PROFILES TABLE SCHEMA ===');
   
-  // Try inserting with minimal required fields only
+  // First check if profiles table has existing data
+  console.log('\nChecking existing profiles...');
+  try {
+    const { data: existingProfiles, error: queryError } = await supabase
+      .from('profiles')
+      .select('*')
+      .limit(1);
+    
+    if (existingProfiles && existingProfiles.length > 0) {
+      console.log('✅ Found existing profile structure:', Object.keys(existingProfiles[0]));
+      console.log('Sample profile data:', existingProfiles[0]);
+      return;
+    } else if (!queryError) {
+      console.log('📋 Profiles table exists but is empty');
+    }
+  } catch (e) {
+    console.log('❌ Query failed:', e.message);
+  }
+
+  // Try inserting with minimal required fields using real UUIDs
+  const realUserUuid = '4dd802ae-0ea4-4e20-adee-c77131a84bd6'; // From our successful login
   const minimalTests = [
-    { user_id: 'test-123' },
-    { userId: 'test-123' },
-    { uid: 'test-123' },
-    { id: 'test-123' },
+    { id: realUserUuid },
+    { id: realUserUuid, email: 'test@example.com' },
+    { id: realUserUuid, name: 'Test User' },
+    { id: realUserUuid, email: 'test@example.com', name: 'Test User' },
+    { user_id: realUserUuid },
+    { userId: realUserUuid },
   ];
   
   console.log('\nTesting minimal required fields...');

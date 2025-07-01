@@ -109,13 +109,18 @@ export class SupabaseStorage implements IStorage {
 
   private async createInitialProfile(userId: string): Promise<void> {
     try {
+      // Based on PRD: profiles table extends auth.users(id), so id field references the user
       const profileData = {
-        user_id: userId,
-        first_name: 'Ricardo',
-        last_name: 'Lopes', 
+        id: userId, // Primary key that references auth.users(id)
+        email: 'demo@example.com', // From PRD schema
+        name: 'APE MAXX Demo User',
+        company: 'APE MAXX Logistics',
+        phone: '+1 (555) 123-4567',
+        language: 'en',
         avatar_url: 'https://images.unsplash.com/photo-1472099645785-5658abf4ff4e?w=150&h=150&fit=crop&crop=face',
         bio: 'Experienced logistics manager with 8+ years in international freight and supply chain optimization.',
         location: 'Miami, FL',
+        website: 'https://apemaxx.com',
         job_title: 'Senior Logistics Manager'
       };
       
@@ -125,27 +130,7 @@ export class SupabaseStorage implements IStorage {
       
       if (profileError) {
         console.log('⚠️ Profile creation failed:', profileError.message);
-        
-        // Try alternative column names for profiles table
-        const altProfileData = {
-          userId: userId,
-          firstName: 'Ricardo',
-          lastName: 'Lopes', 
-          avatarUrl: 'https://images.unsplash.com/photo-1472099645785-5658abf4ff4e?w=150&h=150&fit=crop&crop=face',
-          bio: 'Experienced logistics manager with 8+ years in international freight and supply chain optimization.',
-          location: 'Miami, FL',
-          jobTitle: 'Senior Logistics Manager'
-        };
-        
-        const { error: altProfileError } = await supabase
-          .from('profiles')
-          .insert(altProfileData);
-        
-        if (altProfileError) {
-          console.log('⚠️ Alternative profile creation also failed:', altProfileError.message);
-        } else {
-          console.log('✅ Profile created with alternative schema');
-        }
+        console.log('⚠️ This may be due to RLS policies - profiles will be created when user first accesses dashboard');
       } else {
         console.log('✅ Profile created for user');
       }
