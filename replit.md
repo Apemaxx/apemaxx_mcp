@@ -143,6 +143,11 @@ The application uses the following main entities:
   - Removed profit upload component from dashboard header as requested
   - Profile settings page displays real user data from Supabase profiles table
   - User menu shows real profile information (name, avatar, job title) from database
+- July 1, 2025: **USER PROFILE DATA FETCHING RESTORED**: Fixed profile display in header
+  - Profile data correctly fetches from Supabase profiles table using direct client connection
+  - User menu displays real name "Flavio Campos" and company information
+  - Professional avatar photo displays properly from database
+  - Warehouse receipts integration confirmed working with real database queries
 
 ## Current Status
 - ✅ **AUTHENTICATION COMPLETELY WORKING** with restored original auth-provider system
