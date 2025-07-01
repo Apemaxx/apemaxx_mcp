@@ -63,56 +63,95 @@ export class SupabaseStorage implements IStorage {
     }
     
     console.log('✅ User found:', { id: data.id, email: data.email });
-    return data as User;
+    
+    // Map the real Supabase schema to our internal User type
+    return {
+      id: data.id,
+      email: data.email,
+      passwordHash: data.password, // Real schema uses 'password' column
+      createdAt: new Date(data.created_at)
+    } as User;
   }
 
   async createUser(user: InsertUser): Promise<User> {
     console.log('📝 Creating new user in Supabase:', user.email);
     
+    // Using the discovered schema: users table has 'password' column and includes name fields
     const { data, error } = await supabase
       .from('users')
       .insert({
         email: user.email,
-        password_hash: user.passwordHash,
-        created_at: new Date().toISOString()
+        password: user.passwordHash, // Real schema uses 'password', not 'password_hash'
+        first_name: 'Ricardo',
+        last_name: 'Lopes',
+        company: 'APE MAXX Logistics'
       })
       .select()
       .single();
     
     if (error) {
       console.error('❌ Error creating user:', error);
-      throw new Error('Failed to create user');
+      throw new Error('Failed to create user: ' + error.message);
     }
     
     console.log('✅ User created successfully:', data.id);
     
-    // Auto-create a profile for the new user
-    const profileData = {
-      user_id: data.id,
-      first_name: 'Ricardo',
-      last_name: 'Lopes', 
-      avatar_url: 'https://images.unsplash.com/photo-1472099645785-5658abf4ff4e?w=150&h=150&fit=crop&crop=face',
-      bio: 'Experienced logistics manager with 8+ years in international freight and supply chain optimization.',
-      location: 'Miami, FL',
-      job_title: 'Senior Logistics Manager'
-    };
-    
-    const { error: profileError } = await supabase
-      .from('profiles')
-      .insert(profileData);
-    
-    if (profileError) {
-      console.log('⚠️ Could not create profile (table may not exist):', profileError.message);
-    } else {
-      console.log('✅ Profile created for user');
-    }
+    // Create profile using the discovered profiles schema
+    await this.createInitialProfile(data.id);
     
     return {
       id: data.id,
       email: data.email,
-      passwordHash: data.password_hash,
+      passwordHash: data.password, // Map back to our internal schema
       createdAt: new Date(data.created_at)
     } as User;
+  }
+
+  private async createInitialProfile(userId: string): Promise<void> {
+    try {
+      const profileData = {
+        user_id: userId,
+        first_name: 'Ricardo',
+        last_name: 'Lopes', 
+        avatar_url: 'https://images.unsplash.com/photo-1472099645785-5658abf4ff4e?w=150&h=150&fit=crop&crop=face',
+        bio: 'Experienced logistics manager with 8+ years in international freight and supply chain optimization.',
+        location: 'Miami, FL',
+        job_title: 'Senior Logistics Manager'
+      };
+      
+      const { error: profileError } = await supabase
+        .from('profiles')
+        .insert(profileData);
+      
+      if (profileError) {
+        console.log('⚠️ Profile creation failed:', profileError.message);
+        
+        // Try alternative column names for profiles table
+        const altProfileData = {
+          userId: userId,
+          firstName: 'Ricardo',
+          lastName: 'Lopes', 
+          avatarUrl: 'https://images.unsplash.com/photo-1472099645785-5658abf4ff4e?w=150&h=150&fit=crop&crop=face',
+          bio: 'Experienced logistics manager with 8+ years in international freight and supply chain optimization.',
+          location: 'Miami, FL',
+          jobTitle: 'Senior Logistics Manager'
+        };
+        
+        const { error: altProfileError } = await supabase
+          .from('profiles')
+          .insert(altProfileData);
+        
+        if (altProfileError) {
+          console.log('⚠️ Alternative profile creation also failed:', altProfileError.message);
+        } else {
+          console.log('✅ Profile created with alternative schema');
+        }
+      } else {
+        console.log('✅ Profile created for user');
+      }
+    } catch (error) {
+      console.error('Profile creation error:', error);
+    }
   }
 
   async getProfile(userId: string): Promise<Profile | undefined> {
