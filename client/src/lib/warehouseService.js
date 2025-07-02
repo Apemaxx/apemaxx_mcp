@@ -31,11 +31,7 @@ export const warehouseService = {
     try {
       const { data, error } = await supabase
         .from('warehouse_receipts')
-        .select(`
-          *,
-          receipt_number:wr_number,
-          status
-        `)
+        .select('*')
         .eq('user_id', userId)
         .order('received_date', { ascending: false })
         .limit(limit);
@@ -45,7 +41,7 @@ export const warehouseService = {
       // Add derived fields to match summary view structure
       return data?.map(receipt => ({
         ...receipt,
-        receipt_number: receipt.wr_number,
+        receipt_number: receipt.tracking_number || `WR-${receipt.id}`,
         attachment_count: 0, // Will be updated when attachments are implemented
         status: receipt.status || 'received'
       })) || [];
@@ -255,29 +251,61 @@ export const warehouseService = {
     return data;
   },
 
-  // Search receipts
+  // Search receipts with fallback
   async searchReceipts(userId, searchTerm) {
-    const { data, error } = await supabase
-      .from('warehouse_receipt_summary')
-      .select('*')
-      .eq('user_id', userId)
-      .or(`receipt_number.ilike.%${searchTerm}%,tracking_number.ilike.%${searchTerm}%,shipper_name.ilike.%${searchTerm}%,carrier_name.ilike.%${searchTerm}%`)
-      .order('received_date', { ascending: false });
-    
-    if (error) throw error;
-    return data;
+    try {
+      const { data, error } = await supabase
+        .from('warehouse_receipt_summary')
+        .select('*')
+        .eq('user_id', userId)
+        .or(`receipt_number.ilike.%${searchTerm}%,tracking_number.ilike.%${searchTerm}%,shipper_name.ilike.%${searchTerm}%,carrier_name.ilike.%${searchTerm}%`)
+        .order('received_date', { ascending: false });
+      
+      if (error) {
+        // Fallback to base table
+        const { data: fallbackData, error: fallbackError } = await supabase
+          .from('warehouse_receipts')
+          .select('*')
+          .eq('user_id', userId)
+          .or(`tracking_number.ilike.%${searchTerm}%,shipper_name.ilike.%${searchTerm}%,carrier_name.ilike.%${searchTerm}%`)
+          .order('received_date', { ascending: false });
+        
+        if (fallbackError) throw fallbackError;
+        return fallbackData || [];
+      }
+      return data || [];
+    } catch (error) {
+      console.error('Search receipts failed:', error);
+      return [];
+    }
   },
 
-  // Get receipts by status
+  // Get receipts by status with fallback
   async getReceiptsByStatus(userId, status) {
-    const { data, error } = await supabase
-      .from('warehouse_receipt_summary')
-      .select('*')
-      .eq('user_id', userId)
-      .eq('status', status)
-      .order('received_date', { ascending: false });
-    
-    if (error) throw error;
-    return data;
+    try {
+      const { data, error } = await supabase
+        .from('warehouse_receipt_summary')
+        .select('*')
+        .eq('user_id', userId)
+        .eq('status', status)
+        .order('received_date', { ascending: false });
+      
+      if (error) {
+        // Fallback to base table
+        const { data: fallbackData, error: fallbackError } = await supabase
+          .from('warehouse_receipts')
+          .select('*')
+          .eq('user_id', userId)
+          .eq('status', status)
+          .order('received_date', { ascending: false });
+        
+        if (fallbackError) throw fallbackError;
+        return fallbackData || [];
+      }
+      return data || [];
+    } catch (error) {
+      console.error('Get receipts by status failed:', error);
+      return [];
+    }
   }
 };

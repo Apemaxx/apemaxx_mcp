@@ -6,6 +6,7 @@ import { TooltipProvider } from "@/components/ui/tooltip";
 import { AuthProvider, useAuth } from "@/components/auth-provider";
 import Login from "@/pages/login";
 import Dashboard from "@/pages/dashboard";
+import WarehouseReceiptManager from "@/components/WarehouseReceiptManager";
 import { Loader2 } from "lucide-react";
 
 function AppRouter() {
@@ -28,6 +29,9 @@ function AppRouter() {
 
   return (
     <Switch>
+      <Route path="/warehouse">
+        <WarehouseReceiptManager userId={user?.id} />
+      </Route>
       <Route path="/" component={Dashboard} />
       <Route component={Dashboard} />
     </Switch>
