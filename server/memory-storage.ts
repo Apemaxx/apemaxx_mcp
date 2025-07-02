@@ -487,4 +487,71 @@ export class MemoryStorage implements IStorage {
     };
     this.profiles.push(sampleProfile);
   }
+
+  // Extended Warehouse Methods
+  async getWarehouseReceipts(userId: string, limit?: number, locationId?: string | null, status?: string | null): Promise<WarehouseReceipt[]> {
+    let receipts = this.warehouseReceipts.filter(receipt => receipt.userId === userId);
+    
+    if (status) receipts = receipts.filter(receipt => receipt.status === status);
+    if (limit) receipts = receipts.slice(0, limit);
+    
+    return receipts;
+  }
+
+  async getWarehouseReceiptsByLocation(userId: string): Promise<Record<string, WarehouseReceipt[]>> {
+    const receipts = await this.getWarehouseReceipts(userId, 100);
+    
+    const groupedByLocation: Record<string, WarehouseReceipt[]> = {};
+    receipts.forEach(receipt => {
+      const location = 'Default Location';
+      if (!groupedByLocation[location]) {
+        groupedByLocation[location] = [];
+      }
+      groupedByLocation[location].push(receipt);
+    });
+
+    return groupedByLocation;
+  }
+
+  async searchWarehouseReceipts(userId: string, searchTerm: string): Promise<WarehouseReceipt[]> {
+    return this.warehouseReceipts.filter(receipt => 
+      receipt.userId === userId &&
+      (receipt.receiptNumber.toLowerCase().includes(searchTerm.toLowerCase()) ||
+       receipt.description.toLowerCase().includes(searchTerm.toLowerCase()))
+    );
+  }
+
+  async getWarehouseDashboardStats(userId: string): Promise<{
+    total_receipts: number;
+    by_status: Record<string, number>;
+    by_location: Record<string, number>;
+    total_pieces: number;
+    total_weight: number;
+    total_volume: number;
+    recent_activity: WarehouseReceipt[];
+  }> {
+    const receipts = await this.getWarehouseReceipts(userId, 100);
+
+    const stats = {
+      total_receipts: receipts.length,
+      by_status: {} as Record<string, number>,
+      by_location: {} as Record<string, number>,
+      total_pieces: 0,
+      total_weight: 0,
+      total_volume: 0,
+      recent_activity: receipts.slice(0, 10)
+    };
+
+    receipts.forEach(receipt => {
+      const status = receipt.status || 'received_on_hand';
+      stats.by_status[status] = (stats.by_status[status] || 0) + 1;
+
+      const location = 'Default Location';
+      stats.by_location[location] = (stats.by_location[location] || 0) + 1;
+
+      stats.total_pieces += receipt.quantity || 0;
+    });
+
+    return stats;
+  }
 }

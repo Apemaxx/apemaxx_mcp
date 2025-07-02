@@ -317,8 +317,19 @@ export class SupabaseStorage implements IStorage {
   }
 
   async getRecentWarehouseReceipts(userId: string): Promise<WarehouseReceipt[]> {
-    // For now, return demo data
-    return [];
+    const { data, error } = await supabase
+      .from('warehouse_receipts')
+      .select('*')
+      .eq('user_id', userId)
+      .order('received_date', { ascending: false })
+      .limit(10);
+    
+    if (error) {
+      console.error('Error fetching warehouse receipts:', error);
+      return [];
+    }
+    
+    return data as WarehouseReceipt[];
   }
 
   async createAiInsight(insight: InsertAiInsight): Promise<AiInsight> {
@@ -374,5 +385,116 @@ export class SupabaseStorage implements IStorage {
     }
     
     return data as TrackingEvent;
+  }
+
+  // Extended Warehouse Methods
+  async getWarehouseReceipts(userId: string, limit?: number, locationId?: string | null, status?: string | null): Promise<WarehouseReceipt[]> {
+    let query = supabase
+      .from('warehouse_receipts')
+      .select(`
+        *,
+        warehouses!inner(name, code)
+      `)
+      .eq('user_id', userId)
+      .order('received_date', { ascending: false });
+    
+    if (limit) query = query.limit(limit);
+    if (locationId) query = query.eq('warehouse_location_id', locationId);
+    if (status) query = query.eq('status', status);
+    
+    const { data, error } = await query;
+    
+    if (error) {
+      console.error('Error fetching warehouse receipts:', error);
+      return [];
+    }
+    
+    // Transform data to include warehouse location name
+    return (data || []).map(receipt => ({
+      ...receipt,
+      warehouse_location_name: receipt.warehouses?.name || 'Unknown Location',
+      warehouse_location_code: receipt.warehouses?.code || 'UNK'
+    })) as WarehouseReceipt[];
+  }
+
+  async getWarehouseReceiptsByLocation(userId: string): Promise<Record<string, WarehouseReceipt[]>> {
+    const receipts = await this.getWarehouseReceipts(userId, 100);
+    
+    const groupedByLocation: Record<string, WarehouseReceipt[]> = {};
+    receipts.forEach(receipt => {
+      const location = (receipt as any).warehouse_location_name || 'Unknown Location';
+      if (!groupedByLocation[location]) {
+        groupedByLocation[location] = [];
+      }
+      groupedByLocation[location].push(receipt);
+    });
+
+    return groupedByLocation;
+  }
+
+  async searchWarehouseReceipts(userId: string, searchTerm: string): Promise<WarehouseReceipt[]> {
+    const { data, error } = await supabase
+      .from('warehouse_receipts')
+      .select(`
+        *,
+        warehouses!inner(name, code),
+        shippers!inner(name),
+        consignees!inner(name)
+      `)
+      .eq('user_id', userId)
+      .or(`wr_number.ilike.%${searchTerm}%,tracking_number.ilike.%${searchTerm}%,shippers.name.ilike.%${searchTerm}%,consignees.name.ilike.%${searchTerm}%`)
+      .order('received_date', { ascending: false });
+    
+    if (error) {
+      console.error('Error searching warehouse receipts:', error);
+      return [];
+    }
+    
+    return (data || []).map(receipt => ({
+      ...receipt,
+      warehouse_location_name: receipt.warehouses?.name || 'Unknown Location',
+      warehouse_location_code: receipt.warehouses?.code || 'UNK',
+      shipper_name: receipt.shippers?.name || 'Unknown Shipper',
+      consignee_name: receipt.consignees?.name || 'Unknown Consignee'
+    })) as WarehouseReceipt[];
+  }
+
+  async getWarehouseDashboardStats(userId: string): Promise<{
+    total_receipts: number;
+    by_status: Record<string, number>;
+    by_location: Record<string, number>;
+    total_pieces: number;
+    total_weight: number;
+    total_volume: number;
+    recent_activity: WarehouseReceipt[];
+  }> {
+    const receipts = await this.getWarehouseReceipts(userId, 100);
+
+    const stats = {
+      total_receipts: receipts.length,
+      by_status: {} as Record<string, number>,
+      by_location: {} as Record<string, number>,
+      total_pieces: 0,
+      total_weight: 0,
+      total_volume: 0,
+      recent_activity: receipts.slice(0, 10)
+    };
+
+    receipts.forEach(receipt => {
+      // Status counts
+      const status = receipt.status || 'received_on_hand';
+      stats.by_status[status] = (stats.by_status[status] || 0) + 1;
+
+      // Location counts
+      const location = (receipt as any).warehouse_location_name || 'Unknown Location';
+      stats.by_location[location] = (stats.by_location[location] || 0) + 1;
+
+      // Totals
+      stats.total_pieces += receipt.total_pieces || 0;
+      stats.total_weight += parseFloat(receipt.total_weight_lb as string || '0');
+      stats.total_volume += parseFloat(receipt.total_volume_ft3 as string || '0');
+    });
+
+    return stats;
   }
 }

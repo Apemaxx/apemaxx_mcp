@@ -380,6 +380,57 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Warehouse API Routes
+  app.get("/api/warehouse/receipts", authenticateToken, async (req: any, res) => {
+    try {
+      const { limit, location, status } = req.query;
+      const receipts = await storage.getWarehouseReceipts(
+        req.user.id, 
+        limit ? parseInt(limit as string) : undefined,
+        location as string || null,
+        status as string || null
+      );
+      res.json(receipts);
+    } catch (error) {
+      console.error("Warehouse receipts error:", error);
+      res.status(500).json({ message: "Failed to fetch warehouse receipts" });
+    }
+  });
+
+  app.get("/api/warehouse/receipts/by-location", authenticateToken, async (req: any, res) => {
+    try {
+      const receipts = await storage.getWarehouseReceiptsByLocation(req.user.id);
+      res.json(receipts);
+    } catch (error) {
+      console.error("Warehouse receipts by location error:", error);
+      res.status(500).json({ message: "Failed to fetch warehouse receipts by location" });
+    }
+  });
+
+  app.get("/api/warehouse/receipts/search", authenticateToken, async (req: any, res) => {
+    try {
+      const { q } = req.query;
+      if (!q || typeof q !== 'string') {
+        return res.status(400).json({ message: "Search query is required" });
+      }
+      const receipts = await storage.searchWarehouseReceipts(req.user.id, q);
+      res.json(receipts);
+    } catch (error) {
+      console.error("Warehouse search error:", error);
+      res.status(500).json({ message: "Failed to search warehouse receipts" });
+    }
+  });
+
+  app.get("/api/warehouse/stats", authenticateToken, async (req: any, res) => {
+    try {
+      const stats = await storage.getWarehouseDashboardStats(req.user.id);
+      res.json(stats);
+    } catch (error) {
+      console.error("Warehouse stats error:", error);
+      res.status(500).json({ message: "Failed to fetch warehouse statistics" });
+    }
+  });
+
   const httpServer = createServer(app);
   return httpServer;
 }

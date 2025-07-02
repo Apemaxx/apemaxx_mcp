@@ -76,6 +76,18 @@ export interface IStorage {
   // Warehouse Receipts
   createWarehouseReceipt(receipt: InsertWarehouseReceipt): Promise<WarehouseReceipt>;
   getRecentWarehouseReceipts(userId: string): Promise<WarehouseReceipt[]>;
+  getWarehouseReceipts(userId: string, limit?: number, locationId?: string | null, status?: string | null): Promise<WarehouseReceipt[]>;
+  getWarehouseReceiptsByLocation(userId: string): Promise<Record<string, WarehouseReceipt[]>>;
+  searchWarehouseReceipts(userId: string, searchTerm: string): Promise<WarehouseReceipt[]>;
+  getWarehouseDashboardStats(userId: string): Promise<{
+    total_receipts: number;
+    by_status: Record<string, number>;
+    by_location: Record<string, number>;
+    total_pieces: number;
+    total_weight: number;
+    total_volume: number;
+    recent_activity: WarehouseReceipt[];
+  }>;
 
   // AI Insights
   createAiInsight(insight: InsertAiInsight): Promise<AiInsight>;
@@ -377,6 +389,66 @@ export class DbStorage implements IStorage {
   async createTrackingEvent(event: InsertTrackingEvent): Promise<TrackingEvent> {
     const result = await db.insert(trackingEvents).values(event).returning();
     return result[0];
+  }
+
+  // Extended Warehouse Methods
+  async getWarehouseReceipts(userId: string, limit?: number, locationId?: string | null, status?: string | null): Promise<WarehouseReceipt[]> {
+    let query = db
+      .select()
+      .from(warehouseReceipts)
+      .where(eq(warehouseReceipts.userId, userId))
+      .orderBy(desc(warehouseReceipts.createdAt));
+    
+    if (limit) query = query.limit(limit);
+    
+    return query;
+  }
+
+  async getWarehouseReceiptsByLocation(userId: string): Promise<Record<string, WarehouseReceipt[]>> {
+    const receipts = await this.getWarehouseReceipts(userId, 100);
+    
+    const groupedByLocation: Record<string, WarehouseReceipt[]> = {};
+    receipts.forEach(receipt => {
+      const location = 'Default Location';
+      if (!groupedByLocation[location]) {
+        groupedByLocation[location] = [];
+      }
+      groupedByLocation[location].push(receipt);
+    });
+
+    return groupedByLocation;
+  }
+
+  async searchWarehouseReceipts(userId: string, searchTerm: string): Promise<WarehouseReceipt[]> {
+    return await db
+      .select()
+      .from(warehouseReceipts)
+      .where(eq(warehouseReceipts.userId, userId))
+      .orderBy(desc(warehouseReceipts.createdAt));
+  }
+
+  async getWarehouseDashboardStats(userId: string): Promise<{
+    total_receipts: number;
+    by_status: Record<string, number>;
+    by_location: Record<string, number>;
+    total_pieces: number;
+    total_weight: number;
+    total_volume: number;
+    recent_activity: WarehouseReceipt[];
+  }> {
+    const receipts = await this.getWarehouseReceipts(userId, 100);
+
+    const stats = {
+      total_receipts: receipts.length,
+      by_status: {} as Record<string, number>,
+      by_location: {} as Record<string, number>,
+      total_pieces: 0,
+      total_weight: 0,
+      total_volume: 0,
+      recent_activity: receipts.slice(0, 10)
+    };
+
+    return stats;
   }
 }
 

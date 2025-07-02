@@ -10,25 +10,33 @@ export const warehouseService = {
     SHIPPED: 'shipped'
   },
 
-  // Get warehouse receipts with enhanced data
+  // Get warehouse receipts from backend API
   async getReceipts(userId, limit = 20, locationId = null, status = null) {
-    let query = supabase
-      .from('warehouse_receipt_summary_enhanced')
-      .select('*')
-      .eq('user_id', userId)
-      .order('received_date', { ascending: false });
-    
-    if (limit) query = query.limit(limit);
-    if (locationId) query = query.eq('warehouse_location_id', locationId);
-    if (status) query = query.eq('status', status);
-    
-    const { data, error } = await query;
-    if (error) {
-      // Fallback to base table if enhanced view not available
-      console.warn('Enhanced view not available, falling back to base table');
+    try {
+      const params = new URLSearchParams();
+      if (limit) params.append('limit', limit.toString());
+      if (locationId) params.append('location', locationId);
+      if (status) params.append('status', status);
+      
+      const response = await fetch(`/api/warehouse/receipts?${params.toString()}`, {
+        headers: {
+          'Authorization': `Bearer ${localStorage.getItem('authToken')}`,
+          'Content-Type': 'application/json'
+        }
+      });
+      
+      if (response.ok) {
+        const receipts = await response.json();
+        console.log('✅ Real warehouse receipts retrieved:', receipts.length);
+        return receipts;
+      } else {
+        console.warn('⚠️ API request failed, using fallback data');
+        return await this.getReceiptsFallback(userId, limit, locationId, status);
+      }
+    } catch (error) {
+      console.error('❌ Error fetching receipts from API:', error);
       return await this.getReceiptsFallback(userId, limit, locationId, status);
     }
-    return data;
   },
 
   // Fallback method using base table
@@ -127,31 +135,53 @@ export const warehouseService = {
     return sampleReceipts.slice(0, limit);
   },
 
-  // Get receipts by location
+  // Get receipts by location from backend API
   async getReceiptsByLocation(userId) {
-    const receipts = await this.getReceipts(userId, 100); // Get more for grouping
-    
-    // Group by location
-    const groupedByLocation = {
-      'JFK International Airport': receipts
-    };
+    try {
+      const response = await fetch('/api/warehouse/receipts/by-location', {
+        headers: {
+          'Authorization': `Bearer ${localStorage.getItem('authToken')}`,
+          'Content-Type': 'application/json'
+        }
+      });
 
-    return groupedByLocation;
+      if (response.ok) {
+        const groupedReceipts = await response.json();
+        console.log('✅ Real warehouse receipts by location retrieved');
+        return groupedReceipts;
+      } else {
+        console.warn('⚠️ By-location API request failed, using fallback data');
+        const receipts = await this.getReceipts(userId, 100);
+        return { 'JFK International Airport': receipts };
+      }
+    } catch (error) {
+      console.error('❌ Error fetching receipts by location from API:', error);
+      const receipts = await this.getReceipts(userId, 100);
+      return { 'JFK International Airport': receipts };
+    }
   },
 
   // Get enhanced analytics
+  // Get dashboard statistics from backend API
   async getDashboardStats(userId) {
     try {
-      const { data, error } = await supabase
-        .rpc('get_warehouse_analytics_enhanced', { user_uuid: userId });
+      const response = await fetch('/api/warehouse/stats', {
+        headers: {
+          'Authorization': `Bearer ${localStorage.getItem('authToken')}`,
+          'Content-Type': 'application/json'
+        }
+      });
 
-      if (error) {
-        console.warn('Analytics function not available, using fallback');
+      if (response.ok) {
+        const stats = await response.json();
+        console.log('✅ Real warehouse stats retrieved');
+        return stats;
+      } else {
+        console.warn('⚠️ Stats API request failed, using fallback data');
         return await this.getFallbackStats(userId);
       }
-      return data;
     } catch (error) {
-      console.warn('Analytics function failed, using fallback');
+      console.error('❌ Error fetching stats from API:', error);
       return await this.getFallbackStats(userId);
     }
   },
@@ -412,18 +442,44 @@ export const warehouseService = {
   },
 
   // Search functionality
+  // Search receipts using backend API
   async searchReceipts(userId, searchTerm) {
-    const receipts = await this.getReceipts(userId, 100);
-    
-    // Client-side search if server-side search fails
-    return receipts.filter(receipt => 
-      receipt.receipt_number?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      receipt.tracking_number?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      receipt.shipper_name?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      receipt.consignee_name?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      receipt.carrier_name?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      receipt.pro_number?.toLowerCase().includes(searchTerm.toLowerCase())
-    );
+    try {
+      const response = await fetch(`/api/warehouse/receipts/search?q=${encodeURIComponent(searchTerm)}`, {
+        headers: {
+          'Authorization': `Bearer ${localStorage.getItem('authToken')}`,
+          'Content-Type': 'application/json'
+        }
+      });
+
+      if (response.ok) {
+        const results = await response.json();
+        console.log('✅ Real warehouse search results retrieved:', results.length);
+        return results;
+      } else {
+        console.warn('⚠️ Search API request failed, using client-side search');
+        const receipts = await this.getReceipts(userId, 100);
+        return receipts.filter(receipt => 
+          receipt.receipt_number?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+          receipt.tracking_number?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+          receipt.shipper_name?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+          receipt.consignee_name?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+          receipt.carrier_name?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+          receipt.pro_number?.toLowerCase().includes(searchTerm.toLowerCase())
+        );
+      }
+    } catch (error) {
+      console.error('❌ Error searching from API:', error);
+      const receipts = await this.getReceipts(userId, 100);
+      return receipts.filter(receipt => 
+        receipt.receipt_number?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        receipt.tracking_number?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        receipt.shipper_name?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        receipt.consignee_name?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        receipt.carrier_name?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        receipt.pro_number?.toLowerCase().includes(searchTerm.toLowerCase())
+      );
+    }
   },
 
   // Utility functions
