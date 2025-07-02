@@ -454,7 +454,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // PDF Processing Endpoint
-  app.post("/api/warehouse/process-pdf", authenticateToken, upload.single('pdf'), async (req: any, res) => {
+  app.post("/api/warehouse/process-pdf", upload.single('pdf'), authenticateToken, async (req: any, res) => {
     try {
       if (!req.file) {
         return res.status(400).json({ message: "No PDF file uploaded" });
@@ -468,11 +468,19 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
       console.log("📄 Processing PDF file:", req.file.originalname);
 
-      // Extract text from PDF
-      const pdfBuffer = req.file.buffer;
-      const pdfParse = await import('pdf-parse');
-      const pdfData = await pdfParse.default(pdfBuffer);
-      const pdfText = pdfData.text;
+      // Extract text from PDF with error handling
+      let pdfText = '';
+      try {
+        const pdfBuffer = Buffer.from(req.file.buffer);
+        const pdfParse = await import('pdf-parse');
+        const pdfData = await pdfParse.default(pdfBuffer);
+        pdfText = pdfData.text || '';
+      } catch (pdfError) {
+        console.error("PDF parsing error:", pdfError);
+        return res.status(400).json({ 
+          message: "Failed to parse PDF file. Please ensure it's a valid PDF document." 
+        });
+      }
 
       console.log("📝 Extracted text length:", pdfText.length);
 
