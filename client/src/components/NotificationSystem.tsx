@@ -1,0 +1,600 @@
+import React, { useState, useEffect, createContext, useContext, ReactNode } from 'react';
+import { WarehouseReceipt } from '../lib/warehouseService';
+
+interface Notification {
+  id: number;
+  type: 'success' | 'error' | 'warning' | 'info';
+  title?: string;
+  message: string;
+  duration: number;
+}
+
+interface NotificationContextType {
+  notifications: Notification[];
+  addNotification: (notification: Partial<Notification>) => number;
+  removeNotification: (id: number) => void;
+  clearAllNotifications: () => void;
+}
+
+const NotificationContext = createContext<NotificationContextType | null>(null);
+
+export const useNotifications = () => {
+  const context = useContext(NotificationContext);
+  if (!context) {
+    throw new Error('useNotifications must be used within NotificationProvider');
+  }
+  return context;
+};
+
+interface NotificationProviderProps {
+  children: ReactNode;
+}
+
+export const NotificationProvider: React.FC<NotificationProviderProps> = ({ children }) => {
+  const [notifications, setNotifications] = useState<Notification[]>([]);
+
+  const addNotification = (notification: Partial<Notification>): number => {
+    const id = Date.now() + Math.random();
+    const newNotification: Notification = {
+      id,
+      type: 'info',
+      duration: 5000,
+      message: '',
+      ...notification
+    };
+
+    setNotifications(prev => [...prev, newNotification]);
+
+    if (newNotification.duration > 0) {
+      setTimeout(() => {
+        removeNotification(id);
+      }, newNotification.duration);
+    }
+
+    return id;
+  };
+
+  const removeNotification = (id: number) => {
+    setNotifications(prev => prev.filter(notification => notification.id !== id));
+  };
+
+  const clearAllNotifications = () => {
+    setNotifications([]);
+  };
+
+  return (
+    <NotificationContext.Provider value={{
+      notifications,
+      addNotification,
+      removeNotification,
+      clearAllNotifications
+    }}>
+      {children}
+      <NotificationContainer />
+    </NotificationContext.Provider>
+  );
+};
+
+const NotificationContainer: React.FC = () => {
+  const { notifications, removeNotification } = useNotifications();
+
+  const getNotificationIcon = (type: string) => {
+    switch (type) {
+      case 'success': return '✅';
+      case 'error': return '❌';
+      case 'warning': return '⚠️';
+      case 'info': return 'ℹ️';
+      default: return 'ℹ️';
+    }
+  };
+
+  const getNotificationColors = (type: string) => {
+    switch (type) {
+      case 'success': return 'bg-green-50 border-green-200 text-green-800';
+      case 'error': return 'bg-red-50 border-red-200 text-red-800';
+      case 'warning': return 'bg-yellow-50 border-yellow-200 text-yellow-800';
+      case 'info': return 'bg-blue-50 border-blue-200 text-blue-800';
+      default: return 'bg-gray-50 border-gray-200 text-gray-800';
+    }
+  };
+
+  return (
+    <div className="fixed top-4 right-4 z-50 space-y-2 max-w-sm w-full">
+      {notifications.map(notification => (
+        <div
+          key={notification.id}
+          className={`border rounded-lg p-4 shadow-lg animate-slide-in ${getNotificationColors(notification.type)}`}
+        >
+          <div className="flex items-start space-x-3">
+            <div className="text-lg">{getNotificationIcon(notification.type)}</div>
+            <div className="flex-1 min-w-0">
+              {notification.title && (
+                <div className="font-medium text-sm mb-1">{notification.title}</div>
+              )}
+              <div className="text-sm">{notification.message}</div>
+            </div>
+            <button
+              onClick={() => removeNotification(notification.id)}
+              className="text-gray-400 hover:text-gray-600 ml-2"
+            >
+              ✕
+            </button>
+          </div>
+        </div>
+      ))}
+    </div>
+  );
+};
+
+// Mobile-Optimized Receipt Card Component
+interface MobileReceiptCardProps {
+  receipt: WarehouseReceipt;
+  onSelect: (receipt: WarehouseReceipt) => void;
+  onStatusUpdate: (receiptId: string, newStatus: string) => Promise<void>;
+}
+
+export const MobileReceiptCard: React.FC<MobileReceiptCardProps> = ({ 
+  receipt, 
+  onSelect, 
+  onStatusUpdate 
+}) => {
+  const [showActions, setShowActions] = useState(false);
+  const { addNotification } = useNotifications();
+
+  const handleStatusUpdate = async (newStatus: string) => {
+    try {
+      await onStatusUpdate(receipt.id, newStatus);
+      addNotification({
+        type: 'success',
+        title: 'Status Updated',
+        message: `Receipt ${receipt.receipt_number} status updated to ${newStatus}`
+      });
+    } catch (error) {
+      addNotification({
+        type: 'error',
+        title: 'Update Failed',
+        message: 'Failed to update receipt status'
+      });
+    }
+    setShowActions(false);
+  };
+
+  return (
+    <div className="bg-white rounded-lg shadow-sm border border-gray-200 overflow-hidden relative">
+      {/* Header */}
+      <div className="p-4 border-b border-gray-100">
+        <div className="flex justify-between items-start">
+          <div>
+            <h3 className="font-semibold text-gray-900 text-lg">
+              {receipt.receipt_number}
+            </h3>
+            <p className="text-sm text-gray-600">
+              {new Date(receipt.received_date).toLocaleDateString()}
+            </p>
+          </div>
+          <button
+            onClick={() => setShowActions(!showActions)}
+            className="p-2 text-gray-400 hover:text-gray-600"
+          >
+            ⋮
+          </button>
+        </div>
+      </div>
+
+      {/* Content */}
+      <div className="p-4 space-y-3">
+        {/* Status */}
+        <div className="flex items-center justify-between">
+          <span className="text-sm text-gray-600">Status:</span>
+          <div className={`px-3 py-1 rounded-full text-xs font-medium ${
+            receipt.status === 'received_on_hand' ? 'bg-blue-100 text-blue-800' :
+            receipt.status === 'released_by_air' ? 'bg-purple-100 text-purple-800' :
+            receipt.status === 'released_by_ocean' ? 'bg-teal-100 text-teal-800' :
+            receipt.status === 'shipped' ? 'bg-green-100 text-green-800' :
+            'bg-gray-100 text-gray-800'
+          }`}>
+            {receipt.status?.replace(/_/g, ' ').toUpperCase()}
+          </div>
+        </div>
+
+        {/* Key Information */}
+        <div className="space-y-2 text-sm">
+          {receipt.shipper_name && (
+            <div className="flex justify-between">
+              <span className="text-gray-600">Shipper:</span>
+              <span className="text-gray-900 font-medium truncate ml-2 max-w-32">
+                {receipt.shipper_name}
+              </span>
+            </div>
+          )}
+          {receipt.carrier_name && (
+            <div className="flex justify-between">
+              <span className="text-gray-600">Carrier:</span>
+              <span className="text-gray-900 font-medium truncate ml-2 max-w-32">
+                {receipt.carrier_name}
+              </span>
+            </div>
+          )}
+          {receipt.tracking_number && (
+            <div className="flex justify-between">
+              <span className="text-gray-600">Tracking:</span>
+              <span className="text-gray-900 font-mono text-xs truncate ml-2 max-w-32">
+                {receipt.tracking_number}
+              </span>
+            </div>
+          )}
+        </div>
+
+        {/* Metrics */}
+        <div className="grid grid-cols-3 gap-4 pt-3 border-t border-gray-100">
+          <div className="text-center">
+            <div className="text-lg font-bold text-gray-900">
+              {receipt.total_pieces || 0}
+            </div>
+            <div className="text-xs text-gray-500">Pieces</div>
+          </div>
+          <div className="text-center">
+            <div className="text-lg font-bold text-gray-900">
+              {receipt.total_weight_lb ? parseFloat(receipt.total_weight_lb.toString()).toFixed(0) : 0}
+            </div>
+            <div className="text-xs text-gray-500">lbs</div>
+          </div>
+          <div className="text-center">
+            <div className="text-lg font-bold text-gray-900">
+              {receipt.total_volume_ft3 ? parseFloat(receipt.total_volume_ft3.toString()).toFixed(1) : 0}
+            </div>
+            <div className="text-xs text-gray-500">ft³</div>
+          </div>
+        </div>
+
+        {/* Action Button */}
+        <button
+          onClick={() => onSelect(receipt)}
+          className="w-full mt-4 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 font-medium"
+        >
+          View Details
+        </button>
+      </div>
+
+      {/* Actions Dropdown */}
+      {showActions && (
+        <div className="absolute right-4 top-16 bg-white rounded-lg shadow-lg border border-gray-200 py-2 z-20 min-w-48">
+          <button
+            onClick={() => handleStatusUpdate('received_on_hand')}
+            className="w-full px-4 py-2 text-left text-sm hover:bg-gray-50 flex items-center"
+          >
+            📦 Received On Hand
+          </button>
+          <button
+            onClick={() => handleStatusUpdate('released_by_air')}
+            className="w-full px-4 py-2 text-left text-sm hover:bg-gray-50 flex items-center"
+          >
+            ✈️ Released by Air
+          </button>
+          <button
+            onClick={() => handleStatusUpdate('released_by_ocean')}
+            className="w-full px-4 py-2 text-left text-sm hover:bg-gray-50 flex items-center"
+          >
+            🚢 Released by Ocean
+          </button>
+          <button
+            onClick={() => handleStatusUpdate('shipped')}
+            className="w-full px-4 py-2 text-left text-sm hover:bg-gray-50 flex items-center"
+          >
+            🚛 Shipped
+          </button>
+          <div className="border-t border-gray-100 my-2"></div>
+          <button
+            onClick={() => onSelect(receipt)}
+            className="w-full px-4 py-2 text-left text-sm hover:bg-gray-50 text-blue-600"
+          >
+            📋 View Full Details
+          </button>
+        </div>
+      )}
+    </div>
+  );
+};
+
+// Quick Actions Component for Mobile
+interface QuickActionsPanelProps {
+  onAction: (action: string) => void;
+  receiptsCount: number;
+}
+
+export const QuickActionsPanel: React.FC<QuickActionsPanelProps> = ({ onAction, receiptsCount }) => {
+  return (
+    <div className="fixed bottom-0 left-0 right-0 bg-white border-t border-gray-200 p-4 lg:hidden">
+      <div className="flex space-x-3 max-w-sm mx-auto">
+        <button
+          onClick={() => onAction('create')}
+          className="flex-1 px-4 py-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700 font-medium text-center"
+        >
+          ➕ New
+        </button>
+        <button
+          onClick={() => onAction('search')}
+          className="flex-1 px-4 py-3 bg-gray-100 text-gray-700 rounded-lg hover:bg-gray-200 font-medium text-center"
+        >
+          🔍 Search
+        </button>
+        <button
+          onClick={() => onAction('filter')}
+          className="flex-1 px-4 py-3 bg-gray-100 text-gray-700 rounded-lg hover:bg-gray-200 font-medium text-center relative"
+        >
+          🔽 Filter
+          {receiptsCount > 0 && (
+            <span className="absolute -top-2 -right-2 bg-blue-600 text-white text-xs rounded-full h-6 w-6 flex items-center justify-center">
+              {receiptsCount > 99 ? '99+' : receiptsCount}
+            </span>
+          )}
+        </button>
+      </div>
+    </div>
+  );
+};
+
+// Loading Skeleton Component
+interface LoadingSkeletonProps {
+  type?: 'card' | 'table';
+  count?: number;
+}
+
+export const LoadingSkeleton: React.FC<LoadingSkeletonProps> = ({ type = 'card', count = 3 }) => {
+  const skeletonItems = Array.from({ length: count }, (_, index) => index);
+
+  if (type === 'table') {
+    return (
+      <div className="bg-white rounded-lg shadow-sm border border-gray-200 overflow-hidden">
+        <div className="animate-pulse">
+          <div className="bg-gray-50 px-6 py-4 border-b border-gray-200">
+            <div className="grid grid-cols-6 gap-4">
+              {Array.from({ length: 6 }).map((_, index) => (
+                <div key={index} className="h-4 bg-gray-200 rounded"></div>
+              ))}
+            </div>
+          </div>
+          {skeletonItems.map((index) => (
+            <div key={index} className="px-6 py-4 border-b border-gray-100">
+              <div className="grid grid-cols-6 gap-4">
+                {Array.from({ length: 6 }).map((_, colIndex) => (
+                  <div key={colIndex} className="h-4 bg-gray-200 rounded"></div>
+                ))}
+              </div>
+            </div>
+          ))}
+        </div>
+      </div>
+    );
+  }
+
+  return (
+    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+      {skeletonItems.map((index) => (
+        <div key={index} className="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
+          <div className="animate-pulse space-y-4">
+            <div className="flex justify-between items-start">
+              <div className="space-y-2">
+                <div className="h-5 bg-gray-200 rounded w-24"></div>
+                <div className="h-4 bg-gray-200 rounded w-16"></div>
+              </div>
+              <div className="h-6 bg-gray-200 rounded w-20"></div>
+            </div>
+            <div className="space-y-3">
+              <div className="h-4 bg-gray-200 rounded w-full"></div>
+              <div className="h-4 bg-gray-200 rounded w-3/4"></div>
+              <div className="h-4 bg-gray-200 rounded w-1/2"></div>
+            </div>
+            <div className="grid grid-cols-3 gap-4 pt-4 border-t border-gray-100">
+              <div className="text-center space-y-2">
+                <div className="h-6 bg-gray-200 rounded w-8 mx-auto"></div>
+                <div className="h-3 bg-gray-200 rounded w-12 mx-auto"></div>
+              </div>
+              <div className="text-center space-y-2">
+                <div className="h-6 bg-gray-200 rounded w-8 mx-auto"></div>
+                <div className="h-3 bg-gray-200 rounded w-12 mx-auto"></div>
+              </div>
+              <div className="text-center space-y-2">
+                <div className="h-6 bg-gray-200 rounded w-8 mx-auto"></div>
+                <div className="h-3 bg-gray-200 rounded w-12 mx-auto"></div>
+              </div>
+            </div>
+          </div>
+        </div>
+      ))}
+    </div>
+  );
+};
+
+// Error Boundary Component
+interface ErrorBoundaryState {
+  hasError: boolean;
+  error: Error | null;
+}
+
+interface ErrorBoundaryProps {
+  children: ReactNode;
+}
+
+export class ErrorBoundary extends React.Component<ErrorBoundaryProps, ErrorBoundaryState> {
+  constructor(props: ErrorBoundaryProps) {
+    super(props);
+    this.state = { hasError: false, error: null };
+  }
+
+  static getDerivedStateFromError(error: Error): ErrorBoundaryState {
+    return { hasError: true, error };
+  }
+
+  componentDidCatch(error: Error, errorInfo: React.ErrorInfo) {
+    console.error('Warehouse Management Error:', error, errorInfo);
+  }
+
+  render() {
+    if (this.state.hasError) {
+      return (
+        <div className="min-h-96 flex items-center justify-center bg-gray-50 rounded-lg">
+          <div className="text-center">
+            <div className="text-6xl mb-4">⚠️</div>
+            <h2 className="text-xl font-semibold text-gray-900 mb-2">
+              Something went wrong
+            </h2>
+            <p className="text-gray-600 mb-4">
+              There was an error loading the warehouse management system.
+            </p>
+            <button
+              onClick={() => this.setState({ hasError: false, error: null })}
+              className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700"
+            >
+              Try Again
+            </button>
+          </div>
+        </div>
+      );
+    }
+
+    return this.props.children;
+  }
+}
+
+// Print Receipt Component
+interface PrintableReceiptProps {
+  receipt: WarehouseReceipt;
+  attachments?: Array<{ file_name: string; created_at: string }>;
+}
+
+export const PrintableReceipt = React.forwardRef<HTMLDivElement, PrintableReceiptProps>(
+  ({ receipt, attachments = [] }, ref) => {
+    return (
+      <div ref={ref} className="bg-white p-8 max-w-4xl mx-auto print:shadow-none">
+        {/* Header */}
+        <div className="border-b-2 border-gray-800 pb-4 mb-6">
+          <div className="flex justify-between items-start">
+            <div>
+              <h1 className="text-3xl font-bold text-gray-900">WAREHOUSE RECEIPT</h1>
+              <p className="text-gray-600">Professional Cargo Management System</p>
+            </div>
+            <div className="text-right">
+              <div className="text-2xl font-bold text-gray-900">{receipt.receipt_number}</div>
+              <div className="text-gray-600">
+                Date: {new Date(receipt.received_date).toLocaleDateString()}
+              </div>
+            </div>
+          </div>
+        </div>
+
+        {/* Status */}
+        <div className="mb-6">
+          <div className="inline-block px-4 py-2 bg-gray-100 rounded-lg">
+            <span className="font-medium">Status: </span>
+            <span className="font-bold">{receipt.status?.replace(/_/g, ' ').toUpperCase()}</span>
+          </div>
+        </div>
+
+        {/* Company Information */}
+        <div className="grid grid-cols-2 gap-8 mb-8">
+          <div>
+            <h3 className="text-lg font-semibold mb-4 text-gray-900">📤 Shipper Information</h3>
+            <div className="space-y-2">
+              <div><strong>Company:</strong> {receipt.shipper_name || 'N/A'}</div>
+              <div><strong>Address:</strong> {receipt.shipper_address || 'N/A'}</div>
+              <div><strong>Phone:</strong> {receipt.shipper_phone || 'N/A'}</div>
+            </div>
+          </div>
+          <div>
+            <h3 className="text-lg font-semibold mb-4 text-gray-900">📥 Consignee Information</h3>
+            <div className="space-y-2">
+              <div><strong>Company:</strong> {receipt.consignee_name || 'N/A'}</div>
+              <div><strong>Address:</strong> {receipt.consignee_address || 'N/A'}</div>
+              <div><strong>Phone:</strong> {receipt.consignee_phone || 'N/A'}</div>
+            </div>
+          </div>
+        </div>
+
+        {/* Tracking Information */}
+        <div className="mb-8">
+          <h3 className="text-lg font-semibold mb-4 text-gray-900">🚛 Tracking & Carrier Information</h3>
+          <div className="grid grid-cols-3 gap-6">
+            <div><strong>Carrier:</strong> {receipt.carrier_name || 'N/A'}</div>
+            <div><strong>Tracking Number:</strong> {receipt.tracking_number || 'N/A'}</div>
+            <div><strong>Driver:</strong> {receipt.driver_name || 'N/A'}</div>
+          </div>
+        </div>
+
+        {/* Cargo Details */}
+        <div className="mb-8">
+          <h3 className="text-lg font-semibold mb-4 text-gray-900">📦 Cargo Details</h3>
+          <div className="border border-gray-300 rounded-lg overflow-hidden">
+            <table className="w-full">
+              <thead className="bg-gray-50">
+                <tr>
+                  <th className="px-4 py-3 text-left font-medium">Description</th>
+                  <th className="px-4 py-3 text-left font-medium">Pieces</th>
+                  <th className="px-4 py-3 text-left font-medium">Weight (lbs)</th>
+                  <th className="px-4 py-3 text-left font-medium">Volume (ft³)</th>
+                  <th className="px-4 py-3 text-left font-medium">Package Type</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr>
+                  <td className="px-4 py-3 border-t">{receipt.cargo_description || 'N/A'}</td>
+                  <td className="px-4 py-3 border-t">{receipt.total_pieces || 0}</td>
+                  <td className="px-4 py-3 border-t">{receipt.total_weight_lb || 0}</td>
+                  <td className="px-4 py-3 border-t">{receipt.total_volume_ft3 || 0}</td>
+                  <td className="px-4 py-3 border-t">{receipt.package_type || 'N/A'}</td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+
+        {/* Additional Information */}
+        <div className="grid grid-cols-2 gap-8 mb-8">
+          <div>
+            <h3 className="text-lg font-semibold mb-4 text-gray-900">🏢 Warehouse Information</h3>
+            <div className="space-y-2">
+              <div><strong>Location:</strong> {receipt.warehouse_location_name || 'N/A'}</div>
+              <div><strong>Code:</strong> {receipt.warehouse_location_code || 'N/A'}</div>
+              <div><strong>Received by:</strong> {receipt.received_by || 'N/A'}</div>
+            </div>
+          </div>
+          <div>
+            <h3 className="text-lg font-semibold mb-4 text-gray-900">📄 Additional Notes</h3>
+            <div className="text-gray-700">
+              {receipt.notes || 'No additional notes provided.'}
+            </div>
+          </div>
+        </div>
+
+        {/* Attachments */}
+        {attachments.length > 0 && (
+          <div className="mb-8">
+            <h3 className="text-lg font-semibold mb-4 text-gray-900">📎 Attachments</h3>
+            <div className="grid grid-cols-2 gap-4">
+              {attachments.map((attachment, index) => (
+                <div key={index} className="border border-gray-200 rounded p-3">
+                  <div className="font-medium">{attachment.file_name}</div>
+                  <div className="text-sm text-gray-600">
+                    {new Date(attachment.created_at).toLocaleDateString()}
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
+
+        {/* Footer */}
+        <div className="border-t-2 border-gray-800 pt-4 mt-8">
+          <div className="text-center text-gray-600">
+            <p>This is an official warehouse receipt generated by APE MAXX Logistics Platform</p>
+            <p className="text-sm mt-2">
+              Generated on {new Date().toLocaleDateString()} at {new Date().toLocaleTimeString()}
+            </p>
+          </div>
+        </div>
+      </div>
+    );
+  }
+);
+
+PrintableReceipt.displayName = 'PrintableReceipt';

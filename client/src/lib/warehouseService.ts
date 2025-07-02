@@ -1,10 +1,101 @@
-// client/src/lib/warehouseService.js
+// client/src/lib/warehouseService.ts
 import { supabase } from './supabase';
+
+export interface WarehouseReceipt {
+  id: string;
+  receipt_number: string;
+  received_date: string;
+  status: string;
+  shipper_name?: string;
+  shipper_address?: string;
+  shipper_phone?: string;
+  consignee_name?: string;
+  consignee_address?: string;
+  consignee_phone?: string;
+  carrier_name?: string;
+  tracking_number?: string;
+  pro_number?: string;
+  driver_name?: string;
+  total_pieces?: number;
+  total_weight_lb?: number;
+  total_volume_ft3?: number;
+  cargo_description?: string;
+  package_type?: string;
+  warehouse_location_id?: string;
+  warehouse_location_name?: string;
+  warehouse_location_code?: string;
+  received_by?: string;
+  notes?: string;
+}
+
+export interface WarehouseStats {
+  total_receipts: number;
+  by_status: Record<string, number>;
+  by_location: Record<string, number>;
+  total_pieces: number;
+  total_weight: number;
+  total_volume: number;
+  recent_activity: WarehouseReceipt[];
+}
+
+interface ReceiptOptions {
+  status?: string;
+  search?: string;
+  limit?: number;
+  locationId?: string;
+  offset?: number;
+}
 
 export const warehouseService = {
   // ==================== WAREHOUSE RECEIPTS ====================
 
-  async getReceipts(userId, options = {}) {
+  // Get all warehouse receipts for current user
+  async getWarehouseReceipts(options = {}): Promise<WarehouseReceipt[]> {
+    const response = await fetch('/api/warehouse/receipts', {
+      headers: { 'Authorization': `Bearer ${localStorage.getItem('token')}` }
+    });
+    if (!response.ok) throw new Error('Failed to fetch warehouse receipts');
+    return response.json();
+  },
+
+  // Get warehouse dashboard statistics
+  async getWarehouseDashboardStats(): Promise<WarehouseStats> {
+    const response = await fetch('/api/warehouse/stats', {
+      headers: { 'Authorization': `Bearer ${localStorage.getItem('token')}` }
+    });
+    if (!response.ok) throw new Error('Failed to fetch warehouse stats');
+    return response.json();
+  },
+
+  // Create a new warehouse receipt
+  async createWarehouseReceipt(receiptData: any): Promise<WarehouseReceipt> {
+    const response = await fetch('/api/warehouse/receipts', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${localStorage.getItem('token')}`
+      },
+      body: JSON.stringify(receiptData)
+    });
+    if (!response.ok) throw new Error('Failed to create warehouse receipt');
+    return response.json();
+  },
+
+  // Update warehouse receipt
+  async updateWarehouseReceipt(receiptId: string, updates: any): Promise<WarehouseReceipt> {
+    const response = await fetch(`/api/warehouse/receipts/${receiptId}`, {
+      method: 'PATCH',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${localStorage.getItem('token')}`
+      },
+      body: JSON.stringify(updates)
+    });
+    if (!response.ok) throw new Error('Failed to update warehouse receipt');
+    return response.json();
+  },
+
+  async getReceipts(userId: string, options: ReceiptOptions = {}) {
     try {
       console.log('🔍 Trying to fetch warehouse receipts for user:', userId);
       
@@ -52,7 +143,7 @@ export const warehouseService = {
     }
   },
 
-  async getReceiptById(receiptId, userId) {
+  async getReceiptById(receiptId: string, userId: string) {
     try {
       const { data, error } = await supabase
         .from('warehouse_receipt_summary_enhanced')
@@ -69,7 +160,7 @@ export const warehouseService = {
     }
   },
 
-  async createReceipt(receiptData) {
+  async createReceipt(receiptData: any) {
     try {
       // Generate WR number
       const wrNumber = await this.generateWRNumber();
