@@ -471,12 +471,29 @@ export async function registerRoutes(app: Express): Promise<Server> {
       // Extract text from PDF with error handling
       let pdfText = '';
       try {
+        const fs = await import('fs');
+        const path = await import('path');
         const pdfTextExtract = await import('pdf-text-extract');
         
+        // Create temporary file
+        const tempDir = '/tmp';
+        const tempFileName = `pdf_${Date.now()}_${req.file.originalname}`;
+        const tempFilePath = path.join(tempDir, tempFileName);
+        
+        // Write buffer to temporary file
+        fs.writeFileSync(tempFilePath, req.file.buffer);
+        
         // Create a promise-based wrapper for the callback-based function
-        const extractText = (buffer: Buffer): Promise<string> => {
+        const extractText = (filePath: string): Promise<string> => {
           return new Promise((resolve, reject) => {
-            pdfTextExtract.default(buffer, (err: any, text: string) => {
+            pdfTextExtract.default(filePath, (err: any, text: string) => {
+              // Clean up temp file
+              try {
+                fs.unlinkSync(filePath);
+              } catch (cleanupErr) {
+                console.warn("Failed to cleanup temp file:", cleanupErr);
+              }
+              
               if (err) {
                 reject(err);
               } else {
@@ -486,11 +503,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
           });
         };
         
-        // Ensure we have a proper buffer
-        const pdfBuffer = Buffer.isBuffer(req.file.buffer) ? req.file.buffer : Buffer.from(req.file.buffer);
-        
         // Extract text from PDF
-        pdfText = await extractText(pdfBuffer);
+        pdfText = await extractText(tempFilePath);
         
         console.log("📝 Extracted text length:", pdfText.length);
         
