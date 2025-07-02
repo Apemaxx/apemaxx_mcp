@@ -126,16 +126,16 @@ const EnhancedWarehouseDashboardCard = ({ userId, onNavigateToFull }) => {
           </div>
         </div>
 
-        {/* On Hand */}
-        <div className="bg-gradient-to-r from-green-50 to-green-100 p-4 rounded-lg border border-green-200">
+        {/* On Hand - BLUE */}
+        <div className="bg-gradient-to-r from-blue-50 to-blue-100 p-4 rounded-lg border border-blue-200">
           <div className="flex items-center justify-between">
             <div>
-              <p className="text-2xl font-bold text-green-700">
+              <p className="text-2xl font-bold text-blue-700">
                 {stats.by_status?.received_on_hand || 0}
               </p>
-              <p className="text-xs text-green-600 font-medium">On Hand</p>
+              <p className="text-xs text-blue-600 font-medium">On Hand</p>
             </div>
-            <Archive className="w-8 h-8 text-green-600 opacity-80" />
+            <Archive className="w-8 h-8 text-blue-600 opacity-80" />
           </div>
         </div>
 
@@ -155,33 +155,41 @@ const EnhancedWarehouseDashboardCard = ({ userId, onNavigateToFull }) => {
           </div>
         </div>
 
-        {/* Shipped */}
-        <div className="bg-gradient-to-r from-purple-50 to-purple-100 p-4 rounded-lg border border-purple-200">
+        {/* Shipped - GREEN */}
+        <div className="bg-gradient-to-r from-green-50 to-green-100 p-4 rounded-lg border border-green-200">
           <div className="flex items-center justify-between">
             <div>
-              <p className="text-2xl font-bold text-purple-700">
+              <p className="text-2xl font-bold text-green-700">
                 {stats.by_status?.shipped || 0}
               </p>
-              <p className="text-xs text-purple-600 font-medium">Shipped</p>
+              <p className="text-xs text-green-600 font-medium">Shipped</p>
             </div>
-            <Truck className="w-8 h-8 text-purple-600 opacity-80" />
+            <Truck className="w-8 h-8 text-green-600 opacity-80" />
           </div>
         </div>
       </div>
 
       {/* Volume & Weight Summary */}
-      <div className="grid grid-cols-3 gap-4 mb-6 p-4 bg-gray-50 rounded-lg">
+      <div className="grid grid-cols-2 gap-4 mb-6 p-4 bg-gray-50 rounded-lg">
         <div className="text-center">
           <p className="text-lg font-bold text-gray-800">{Math.round(stats.total_pieces || 0)}</p>
           <p className="text-xs text-gray-600">Total Pieces</p>
         </div>
-        <div className="text-center border-l border-r border-gray-300">
+        <div className="text-center border-l border-gray-300">
           <p className="text-lg font-bold text-gray-800">{Math.round(stats.total_weight || 0)}</p>
           <p className="text-xs text-gray-600">Total Weight (lbs)</p>
         </div>
+      </div>
+      
+      {/* Volume Display - Both Units */}
+      <div className="grid grid-cols-2 gap-4 mb-6 p-4 bg-blue-50 rounded-lg border border-blue-200">
         <div className="text-center">
-          <p className="text-lg font-bold text-gray-800">{Math.round(stats.total_volume || 0)}</p>
-          <p className="text-xs text-gray-600">Total Volume (ft³)</p>
+          <p className="text-lg font-bold text-blue-800">{Math.round(stats.total_volume || 0)}</p>
+          <p className="text-xs text-blue-600 font-medium">Cubic Feet (ft³)</p>
+        </div>
+        <div className="text-center border-l border-blue-300">
+          <p className="text-lg font-bold text-blue-800">{Math.round((stats.total_volume || 0) * 0.0283168)}</p>
+          <p className="text-xs text-blue-600 font-medium">Cubic Meters (m³)</p>
         </div>
       </div>
 

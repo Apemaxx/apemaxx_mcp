@@ -6,6 +6,7 @@ import { AIInsights } from '@/components/dashboard/ai-insights';
 import { ChatInterface } from '@/components/dashboard/chat-interface';
 import { LiveTracking } from '@/components/dashboard/live-tracking';
 import EnhancedWarehouseDashboardCard from '@/components/EnhancedWarehouseDashboardCard';
+import NavigationHeader from '@/components/NavigationHeader';
 import { useAuth } from '@/components/auth-provider';
 import { useLocation } from 'wouter';
 
@@ -34,17 +35,21 @@ export default function Dashboard() {
   };
 
   return (
-    <div className="p-4 md:p-8">
-      {/* Header with User Menu */}
-      <header className="mb-8 flex justify-between items-start">
-        <div>
-          <h1 className="text-3xl font-bold text-gray-900">Dashboard: Logistics Command Center</h1>
-          <p className="text-gray-600 mt-1">Welcome back! Here is your AI-powered overview for today.</p>
-        </div>
-        <div className="flex items-center gap-3">
-          <UserMenu />
-        </div>
-      </header>
+    <div className="min-h-screen bg-gray-50">
+      {/* Navigation Header */}
+      <NavigationHeader userId={user?.id} />
+      
+      <div className="p-4 md:p-8">
+        {/* Header with User Menu */}
+        <header className="mb-8 flex justify-between items-start">
+          <div>
+            <h1 className="text-3xl font-bold text-gray-900">Dashboard: Logistics Command Center</h1>
+            <p className="text-gray-600 mt-1">Welcome back! Here is your AI-powered overview for today.</p>
+          </div>
+          <div className="flex items-center gap-3">
+            <UserMenu />
+          </div>
+        </header>
 
       {/* Main Grid */}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
@@ -81,8 +86,8 @@ export default function Dashboard() {
             onNavigateToFull={handleWarehouseNavigation}
           />
         </div>
-
       </div>
+    </div>
     </div>
   );
 }
