@@ -991,9 +991,10 @@ const ProfessionalWarehouseManager: React.FC<ProfessionalWarehouseManagerProps> 
                     <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Pieces</th>
                     <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Weight</th>
                     <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Volume</th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Remarks</th>
+                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Status</th>
                     <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Shipper</th>
                     <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Consignee</th>
+                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Remarks</th>
                   </tr>
                 </thead>
                 <tbody className="bg-white divide-y divide-gray-200">
@@ -1013,7 +1014,7 @@ const ProfessionalWarehouseManager: React.FC<ProfessionalWarehouseManagerProps> 
                         <div className="text-sm font-mono text-gray-900">{receipt.tracking_number || 'N/A'}</div>
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap">
-                        <div className="text-sm text-gray-900">{receipt.pro_number || 'N/A'}</div>
+                        <div className="text-sm text-gray-900">{receipt.pro_number || receipt.cargo_description || 'N/A'}</div>
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">{receipt.total_pieces}</td>
                       <td className="px-6 py-4 whitespace-nowrap">
@@ -1024,9 +1025,14 @@ const ProfessionalWarehouseManager: React.FC<ProfessionalWarehouseManagerProps> 
                         <div className="text-sm text-gray-900">{warehouseService.formatVolumeDetailed(receipt.total_volume_ft3).ft3} ft³</div>
                         <div className="text-xs text-gray-500">{warehouseService.formatVolumeDetailed(receipt.total_volume_ft3).m3} m³</div>
                       </td>
-                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">{receipt.notes || 'N/A'}</td>
+                      <td className="px-6 py-4 whitespace-nowrap">
+                        <div className={`inline-flex px-2 py-1 text-xs font-medium rounded-full ${warehouseService.getStatusColor(receipt.status)}`}>
+                          {warehouseService.getStatusIcon(receipt.status)} {warehouseService.getStatusDisplay(receipt.status)}
+                        </div>
+                      </td>
                       <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">{receipt.shipper_name}</td>
                       <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">{receipt.consignee_name}</td>
+                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">{receipt.notes || 'N/A'}</td>
                     </tr>
                   ))}
                 </tbody>
