@@ -105,12 +105,11 @@ const WarehouseReceiptManager = ({ userId }) => {
       tracking_number: '',
       carrier_name: '',
       driver_name: '',
-      shipper_name: '',
-      shipper_address: '',
-      consignee_name: '',
-      consignee_address: '',
+      shipper_id: '',
+      consignee_id: '',
       total_pieces: 0,
       total_weight_lbs: 0,
+      total_volume_cbf: 0,
       cargo_description: 'GENERAL CARGO',
       received_by: '',
       warehouse_location: '',
@@ -118,6 +117,45 @@ const WarehouseReceiptManager = ({ userId }) => {
     });
     const [files, setFiles] = useState([]);
     const [creating, setCreating] = useState(false);
+    const [addressBook, setAddressBook] = useState([]);
+    const [selectedShipper, setSelectedShipper] = useState(null);
+    const [selectedConsignee, setSelectedConsignee] = useState(null);
+
+    // Load address book when modal opens
+    useEffect(() => {
+      const loadAddressBook = async () => {
+        try {
+          const addressData = await warehouseService.getAddressBook(userId);
+          setAddressBook(addressData);
+        } catch (error) {
+          console.error('Error loading address book:', error);
+        }
+      };
+      
+      if (userId) {
+        loadAddressBook();
+      }
+    }, [userId]);
+
+    const handleShipperChange = async (shipperId) => {
+      setFormData({...formData, shipper_id: shipperId});
+      if (shipperId) {
+        const shipperData = await warehouseService.getAddressBookEntry(shipperId);
+        setSelectedShipper(shipperData);
+      } else {
+        setSelectedShipper(null);
+      }
+    };
+
+    const handleConsigneeChange = async (consigneeId) => {
+      setFormData({...formData, consignee_id: consigneeId});
+      if (consigneeId) {
+        const consigneeData = await warehouseService.getAddressBookEntry(consigneeId);
+        setSelectedConsignee(consigneeData);
+      } else {
+        setSelectedConsignee(null);
+      }
+    };
 
     const handleSubmit = async (e) => {
       e.preventDefault();
@@ -137,18 +175,19 @@ const WarehouseReceiptManager = ({ userId }) => {
           tracking_number: '',
           carrier_name: '',
           driver_name: '',
-          shipper_name: '',
-          shipper_address: '',
-          consignee_name: '',
-          consignee_address: '',
+          shipper_id: '',
+          consignee_id: '',
           total_pieces: 0,
           total_weight_lbs: 0,
+          total_volume_cbf: 0,
           cargo_description: 'GENERAL CARGO',
           received_by: '',
           warehouse_location: '',
           notes: ''
         });
         setFiles([]);
+        setSelectedShipper(null);
+        setSelectedConsignee(null);
       } catch (error) {
         console.error('Error creating receipt:', error);
         alert('Error creating receipt: ' + error.message);
@@ -227,45 +266,59 @@ const WarehouseReceiptManager = ({ userId }) => {
               <div>
                 <h4 className="font-medium text-gray-900 mb-3">Shipper Information</h4>
                 <div className="space-y-3">
-                  <input
-                    type="text"
-                    placeholder="Shipper Name"
-                    value={formData.shipper_name}
-                    onChange={(e) => setFormData({...formData, shipper_name: e.target.value})}
+                  <select
+                    value={formData.shipper_id}
+                    onChange={(e) => handleShipperChange(e.target.value)}
                     className="w-full border border-gray-300 rounded-md px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
-                  />
-                  <textarea
-                    placeholder="Shipper Address"
-                    value={formData.shipper_address}
-                    onChange={(e) => setFormData({...formData, shipper_address: e.target.value})}
-                    className="w-full border border-gray-300 rounded-md px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
-                    rows={3}
-                  />
+                  >
+                    <option value="">Select Shipper</option>
+                    {addressBook.map((entry) => (
+                      <option key={entry.id} value={entry.id}>
+                        {entry.company_name} - {entry.contact_name}
+                      </option>
+                    ))}
+                  </select>
+                  {selectedShipper && (
+                    <div className="text-xs text-gray-600 p-2 bg-gray-50 rounded">
+                      <div><strong>{selectedShipper.company_name}</strong></div>
+                      <div>{selectedShipper.address_line_1}</div>
+                      {selectedShipper.address_line_2 && <div>{selectedShipper.address_line_2}</div>}
+                      <div>{selectedShipper.city}, {selectedShipper.state} {selectedShipper.zip_code}</div>
+                      {selectedShipper.country && <div>{selectedShipper.country}</div>}
+                    </div>
+                  )}
                 </div>
               </div>
               <div>
                 <h4 className="font-medium text-gray-900 mb-3">Consignee Information</h4>
                 <div className="space-y-3">
-                  <input
-                    type="text"
-                    placeholder="Consignee Name"
-                    value={formData.consignee_name}
-                    onChange={(e) => setFormData({...formData, consignee_name: e.target.value})}
+                  <select
+                    value={formData.consignee_id}
+                    onChange={(e) => handleConsigneeChange(e.target.value)}
                     className="w-full border border-gray-300 rounded-md px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
-                  />
-                  <textarea
-                    placeholder="Consignee Address"
-                    value={formData.consignee_address}
-                    onChange={(e) => setFormData({...formData, consignee_address: e.target.value})}
-                    className="w-full border border-gray-300 rounded-md px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
-                    rows={3}
-                  />
+                  >
+                    <option value="">Select Consignee</option>
+                    {addressBook.map((entry) => (
+                      <option key={entry.id} value={entry.id}>
+                        {entry.company_name} - {entry.contact_name}
+                      </option>
+                    ))}
+                  </select>
+                  {selectedConsignee && (
+                    <div className="text-xs text-gray-600 p-2 bg-gray-50 rounded">
+                      <div><strong>{selectedConsignee.company_name}</strong></div>
+                      <div>{selectedConsignee.address_line_1}</div>
+                      {selectedConsignee.address_line_2 && <div>{selectedConsignee.address_line_2}</div>}
+                      <div>{selectedConsignee.city}, {selectedConsignee.state} {selectedConsignee.zip_code}</div>
+                      {selectedConsignee.country && <div>{selectedConsignee.country}</div>}
+                    </div>
+                  )}
                 </div>
               </div>
             </div>
 
             {/* Cargo Details */}
-            <div className="grid grid-cols-3 gap-4">
+            <div className="grid grid-cols-4 gap-4">
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1">
                   Total Pieces
@@ -286,6 +339,18 @@ const WarehouseReceiptManager = ({ userId }) => {
                   step="0.01"
                   value={formData.total_weight_lbs}
                   onChange={(e) => setFormData({...formData, total_weight_lbs: parseFloat(e.target.value) || 0})}
+                  className="w-full border border-gray-300 rounded-md px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">
+                  Total Volume (ft³)
+                </label>
+                <input
+                  type="number"
+                  step="0.01"
+                  value={formData.total_volume_cbf}
+                  onChange={(e) => setFormData({...formData, total_volume_cbf: parseFloat(e.target.value) || 0})}
                   className="w-full border border-gray-300 rounded-md px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
                 />
               </div>
@@ -421,55 +486,55 @@ const WarehouseReceiptManager = ({ userId }) => {
         </button>
       </div>
 
-      {/* Stats Cards */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-6 mb-8">
-        <div className="bg-white p-6 rounded-lg shadow-sm border">
-          <div className="flex items-center justify-between">
-            <div>
-              <p className="text-sm text-gray-600">Total Receipts</p>
-              <p className="text-2xl font-bold text-gray-900">{stats.total_receipts || 0}</p>
-            </div>
-            <Package className="w-8 h-8 text-blue-600" />
+      {/* Stats Cards - 6 Card Layout */}
+      <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-4 mb-8">
+        <div className="bg-white p-4 rounded-lg shadow-sm border">
+          <div className="text-center">
+            <Package className="w-6 h-6 text-blue-600 mx-auto mb-2" />
+            <p className="text-xs text-gray-600">Total Receipts</p>
+            <p className="text-xl font-bold text-gray-900">{stats.total_receipts || 0}</p>
           </div>
         </div>
 
-        <div className="bg-white p-6 rounded-lg shadow-sm border">
-          <div className="flex items-center justify-between">
-            <div>
-              <p className="text-sm text-gray-600">Active Receipts</p>
-              <p className="text-2xl font-bold text-gray-900">{stats.active_receipts || 0}</p>
-            </div>
-            <Clock className="w-8 h-8 text-yellow-600" />
+        <div className="bg-white p-4 rounded-lg shadow-sm border">
+          <div className="text-center">
+            <Clock className="w-6 h-6 text-yellow-600 mx-auto mb-2" />
+            <p className="text-xs text-gray-600">Active Receipts</p>
+            <p className="text-xl font-bold text-gray-900">{stats.active_receipts || 0}</p>
           </div>
         </div>
 
-        <div className="bg-white p-6 rounded-lg shadow-sm border">
-          <div className="flex items-center justify-between">
-            <div>
-              <p className="text-sm text-gray-600">Ready for Release</p>
-              <p className="text-2xl font-bold text-gray-900">{stats.ready_for_release || 0}</p>
-            </div>
-            <AlertCircle className="w-8 h-8 text-orange-600" />
+        <div className="bg-white p-4 rounded-lg shadow-sm border">
+          <div className="text-center">
+            <AlertCircle className="w-6 h-6 text-orange-600 mx-auto mb-2" />
+            <p className="text-xs text-gray-600">Ready for Release</p>
+            <p className="text-xl font-bold text-gray-900">{stats.ready_for_release || 0}</p>
           </div>
         </div>
 
-        <div className="bg-white p-6 rounded-lg shadow-sm border">
-          <div className="flex items-center justify-between">
-            <div>
-              <p className="text-sm text-gray-600">Total Pieces</p>
-              <p className="text-2xl font-bold text-gray-900">{stats.total_pieces || 0}</p>
-            </div>
-            <Package className="w-8 h-8 text-green-600" />
+        <div className="bg-white p-4 rounded-lg shadow-sm border">
+          <div className="text-center">
+            <Package className="w-6 h-6 text-green-600 mx-auto mb-2" />
+            <p className="text-xs text-gray-600">Total Pieces</p>
+            <p className="text-xl font-bold text-gray-900">{stats.total_pieces || 0}</p>
           </div>
         </div>
 
-        <div className="bg-white p-6 rounded-lg shadow-sm border">
-          <div className="flex items-center justify-between">
-            <div>
-              <p className="text-sm text-gray-600">Total Weight</p>
-              <p className="text-2xl font-bold text-gray-900">{stats.total_weight || 0} lbs</p>
-            </div>
-            <Truck className="w-8 h-8 text-purple-600" />
+        <div className="bg-white p-4 rounded-lg shadow-sm border">
+          <div className="text-center">
+            <Truck className="w-6 h-6 text-purple-600 mx-auto mb-2" />
+            <p className="text-xs text-gray-600">Total Weight</p>
+            <p className="text-lg font-bold text-gray-900">{stats.total_weight || 0}</p>
+            <p className="text-xs text-gray-500">lbs</p>
+          </div>
+        </div>
+
+        <div className="bg-white p-4 rounded-lg shadow-sm border">
+          <div className="text-center">
+            <Package className="w-6 h-6 text-indigo-600 mx-auto mb-2" />
+            <p className="text-xs text-gray-600">Total Volume</p>
+            <p className="text-lg font-bold text-gray-900">{stats.total_volume || 0}</p>
+            <p className="text-xs text-gray-500">ft³</p>
           </div>
         </div>
       </div>
@@ -541,10 +606,7 @@ const WarehouseReceiptManager = ({ userId }) => {
                       <StatusBadge status={receipt.status} />
                     </div>
                     
-                    <div className="grid grid-cols-1 md:grid-cols-3 gap-4 text-sm text-gray-600">
-                      <div>
-                        <span className="font-medium">Tracking:</span> {receipt.tracking_number}
-                      </div>
+                    <div className="grid grid-cols-1 md:grid-cols-4 gap-4 text-sm text-gray-600">
                       <div>
                         <span className="font-medium">Carrier:</span> {receipt.carrier_name}
                       </div>
@@ -558,7 +620,13 @@ const WarehouseReceiptManager = ({ userId }) => {
                         <span className="font-medium">Weight:</span> {receipt.total_weight_lb || receipt.total_weight_lbs} lbs
                       </div>
                       <div>
+                        <span className="font-medium">Volume:</span> {receipt.total_volume_cbf || 0} ft³
+                      </div>
+                      <div>
                         <span className="font-medium">Received:</span> {new Date(receipt.received_date).toLocaleDateString()}
+                      </div>
+                      <div>
+                        <span className="font-medium">Tracking:</span> {receipt.tracking_number}
                       </div>
                     </div>
                   </div>

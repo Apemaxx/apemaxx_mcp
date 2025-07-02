@@ -83,15 +83,14 @@ export const warehouseService = {
         wr_number: receiptNumber,
         received_date: new Date().toISOString(),
         received_by: receiptData.received_by,
-        shipper_name: receiptData.shipper_name,
-        shipper_address: receiptData.shipper_address,
-        consignee_name: receiptData.consignee_name,
-        consignee_address: receiptData.consignee_address,
+        shipper_id: receiptData.shipper_id || null,
+        consignee_id: receiptData.consignee_id || null,
         carrier_name: receiptData.carrier_name,
         driver_name: receiptData.driver_name,
         tracking_number: receiptData.tracking_number,
         total_pieces: receiptData.total_pieces,
-        total_weight_lb: receiptData.total_weight_lbs, // Note: your DB uses total_weight_lb
+        total_weight_lb: receiptData.total_weight_lbs,
+        total_volume_cbf: receiptData.total_volume_cbf,
         cargo_description: receiptData.cargo_description || 'GENERAL CARGO',
         warehouse_location: receiptData.warehouse_location,
         notes: receiptData.notes,
@@ -197,13 +196,15 @@ export const warehouseService = {
       const readyForRelease = receipts?.filter(r => r.status === 'Release by Air' || r.status === 'Release by Ocean').length || 0;
       const totalPieces = receipts?.reduce((sum, r) => sum + (r.total_pieces || 0), 0) || 0;
       const totalWeight = receipts?.reduce((sum, r) => sum + (r.total_weight_lb || 0), 0) || 0;
+      const totalVolume = receipts?.reduce((sum, r) => sum + (r.total_volume_cbf || 0), 0) || 0;
 
       return {
         total_receipts: totalReceipts,
         active_receipts: activeReceipts,
         ready_for_release: readyForRelease,
         total_pieces: totalPieces,
-        total_weight: totalWeight
+        total_weight: totalWeight,
+        total_volume: totalVolume
       };
     } catch (error) {
       console.error('Fallback stats calculation failed:', error);
@@ -212,7 +213,8 @@ export const warehouseService = {
         active_receipts: 0,
         ready_for_release: 0,
         total_pieces: 0,
-        total_weight: 0
+        total_weight: 0,
+        total_volume: 0
       };
     }
   },
@@ -306,6 +308,45 @@ export const warehouseService = {
     } catch (error) {
       console.error('Get receipts by status failed:', error);
       return [];
+    }
+  },
+
+  // Get address book entries for shipper/consignee dropdowns
+  async getAddressBook(userId, type = null) {
+    try {
+      let query = supabase
+        .from('address_book')
+        .select('*')
+        .eq('user_id', userId);
+      
+      if (type) {
+        query = query.eq('type', type); // 'shipper' or 'consignee'
+      }
+      
+      const { data, error } = await query.order('company_name', { ascending: true });
+      
+      if (error) throw error;
+      return data || [];
+    } catch (error) {
+      console.error('Get address book failed:', error);
+      return [];
+    }
+  },
+
+  // Get specific address book entry
+  async getAddressBookEntry(entryId) {
+    try {
+      const { data, error } = await supabase
+        .from('address_book')
+        .select('*')
+        .eq('id', entryId)
+        .single();
+      
+      if (error) throw error;
+      return data;
+    } catch (error) {
+      console.error('Get address book entry failed:', error);
+      return null;
     }
   }
 };
