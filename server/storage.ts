@@ -485,8 +485,13 @@ async function initializeStorage() {
   }
 }
 
-// Initialize storage with MemoryStorage to show sample warehouse data
-storage = new MemoryStorage();
-console.log('✅ Using MemoryStorage with sample warehouse receipts data');
+// Initialize storage with Supabase integration
+try {
+  storage = new SupabaseStorage();
+  console.log('✅ Using SupabaseStorage for real Supabase integration');
+} catch (error) {
+  console.log('❌ SupabaseStorage initialization failed, using MemoryStorage:', error instanceof Error ? error.message : String(error));
+  storage = new MemoryStorage();
+}
 
 export { storage };
