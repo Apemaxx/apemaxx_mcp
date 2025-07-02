@@ -391,6 +391,37 @@ export class SupabaseStorage implements IStorage {
   async getWarehouseReceipts(userId: string, limit?: number, locationId?: string | null, status?: string | null): Promise<WarehouseReceipt[]> {
     console.log('🔍 Fetching warehouse receipts for user:', userId);
     
+    // Check what tables exist that might contain warehouse data
+    const { data: tables, error: tableError } = await supabase.rpc('get_table_names');
+    if (!tableError && tables) {
+      console.log('📋 Available tables:', tables.filter(t => t.includes('warehouse') || t.includes('receipt')));
+    }
+    
+    // Try different possible table names for warehouse data
+    const possibleTables = ['warehouse_receipts', 'warehouse_receipt', 'receipts', 'wr_receipts'];
+    
+    for (const tableName of possibleTables) {
+      const { data: testData, error: testError } = await supabase
+        .from(tableName)
+        .select('*')
+        .limit(5);
+      
+      if (!testError && testData && testData.length > 0) {
+        console.log(`✅ Found data in table "${tableName}":`, testData.length, 'records');
+        console.log('📋 Sample data:', testData[0]);
+        return testData.map(receipt => ({
+          ...receipt,
+          warehouse_location_name: 'Warehouse Location',
+          shipper_name: receipt.shipper_name || 'Shipper',
+          consignee_name: receipt.consignee_name || 'Consignee'
+        })) as WarehouseReceipt[];
+      } else if (testError) {
+        console.log(`❌ Table "${tableName}" error:`, testError.message);
+      } else {
+        console.log(`⚠️ Table "${tableName}" exists but is empty`);
+      }
+    }
+    
     // Try to get data without user filtering first to see if it exists
     const { data: allData, error: allError } = await supabase
       .from('warehouse_receipts')
@@ -398,10 +429,6 @@ export class SupabaseStorage implements IStorage {
       .limit(10);
     
     console.log('📋 Total warehouse_receipts in database:', allData?.length || 0);
-    if (allData && allData.length > 0) {
-      console.log('📋 Sample WR numbers:', allData.slice(0, 3).map(r => r.wr_number));
-      console.log('📋 Sample user_ids:', [...new Set(allData.map(r => r.user_id))]);
-    }
     
     // If data exists but user filtering fails, return all data for now
     if (allData && allData.length > 0) {
