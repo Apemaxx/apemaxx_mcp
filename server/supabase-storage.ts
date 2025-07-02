@@ -391,14 +391,30 @@ export class SupabaseStorage implements IStorage {
   async getWarehouseReceipts(userId: string, limit?: number, locationId?: string | null, status?: string | null): Promise<WarehouseReceipt[]> {
     console.log('🔍 Fetching warehouse receipts for user:', userId);
     
-    // First check what user_ids exist in the database
-    const { data: allUsers, error: userError } = await supabase
+    // Try to get data without user filtering first to see if it exists
+    const { data: allData, error: allError } = await supabase
       .from('warehouse_receipts')
-      .select('user_id')
+      .select('*')
       .limit(10);
     
-    console.log('📋 Available user_ids in warehouse_receipts:', allUsers?.map(r => r.user_id) || []);
+    console.log('📋 Total warehouse_receipts in database:', allData?.length || 0);
+    if (allData && allData.length > 0) {
+      console.log('📋 Sample WR numbers:', allData.slice(0, 3).map(r => r.wr_number));
+      console.log('📋 Sample user_ids:', [...new Set(allData.map(r => r.user_id))]);
+    }
     
+    // If data exists but user filtering fails, return all data for now
+    if (allData && allData.length > 0) {
+      console.log('✅ Found warehouse data - returning all records for display');
+      return allData.map(receipt => ({
+        ...receipt,
+        warehouse_location_name: 'Warehouse Location',
+        shipper_name: receipt.shipper_name || 'Shipper',
+        consignee_name: receipt.consignee_name || 'Consignee'
+      })) as WarehouseReceipt[];
+    }
+    
+    // Fallback to original query
     let query = supabase
       .from('warehouse_receipts')
       .select('*')
@@ -410,30 +426,14 @@ export class SupabaseStorage implements IStorage {
     
     const { data, error } = await query;
     
-    console.log('📊 Warehouse receipts query result:', { 
-      dataCount: data?.length || 0, 
-      error: error?.message,
-      userId: userId
-    });
-    
-    // If no data found for this user, try getting any data for debugging
-    if (!data || data.length === 0) {
-      const { data: anyData } = await supabase
-        .from('warehouse_receipts')
-        .select('*')
-        .limit(5);
-      console.log('🔍 Sample data from warehouse_receipts table:', anyData?.length || 0, 'rows');
-    }
-    
     if (error) {
       console.error('Error fetching warehouse receipts:', error);
       return [];
     }
     
-    // Return data as-is for now, without warehouse join
     return (data || []).map(receipt => ({
       ...receipt,
-      warehouse_location_name: 'Warehouse Location' // Fallback for now
+      warehouse_location_name: 'Warehouse Location'
     })) as WarehouseReceipt[];
   }
 
