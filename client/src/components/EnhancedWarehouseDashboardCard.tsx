@@ -17,10 +17,14 @@ const EnhancedWarehouseDashboardCard: React.FC<EnhancedWarehouseDashboardCardPro
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    loadDashboardData();
+    console.log('📦 Warehouse Dashboard: useEffect triggered, userId:', userId);
+    if (userId) {
+      loadDashboardData();
+    }
   }, [userId]);
 
   const loadDashboardData = async () => {
+    console.log('🔄 Warehouse Dashboard: Starting to load data for user:', userId);
     try {
       setLoading(true);
       const [statsData, receiptsData] = await Promise.all([
@@ -28,10 +32,11 @@ const EnhancedWarehouseDashboardCard: React.FC<EnhancedWarehouseDashboardCardPro
         warehouseService.getReceipts(userId, 5) // Latest 5 for dashboard
       ]);
       
+      console.log('📊 Warehouse Dashboard: Data loaded successfully');
       setStats(statsData);
       setRecentReceipts(receiptsData);
     } catch (error) {
-      console.error('Error loading warehouse dashboard data:', error);
+      console.error('❌ Warehouse Dashboard: Error loading data:', error);
     } finally {
       setLoading(false);
     }
