@@ -471,18 +471,39 @@ export async function registerRoutes(app: Express): Promise<Server> {
       // Extract text from PDF with error handling
       let pdfText = '';
       try {
-        const pdfBuffer = Buffer.from(req.file.buffer);
-        const pdfParse = await import('pdf-parse');
-        const pdfData = await pdfParse.default(pdfBuffer);
-        pdfText = pdfData.text || '';
+        const pdfjs = await import('pdfjs-dist');
+        
+        // Load PDF document
+        const loadingTask = pdfjs.getDocument({
+          data: new Uint8Array(req.file.buffer),
+        });
+        
+        const pdfDocument = await loadingTask.promise;
+        const numPages = pdfDocument.numPages;
+        
+        // Extract text from all pages
+        const textPromises = [];
+        for (let pageNum = 1; pageNum <= numPages; pageNum++) {
+          textPromises.push(
+            pdfDocument.getPage(pageNum).then((page: any) => 
+              page.getTextContent().then((textContent: any) => 
+                textContent.items.map((item: any) => item.str).join(' ')
+              )
+            )
+          );
+        }
+        
+        const pageTexts = await Promise.all(textPromises);
+        pdfText = pageTexts.join('\n');
+        
+        console.log("📝 Extracted text length:", pdfText.length);
+        
       } catch (pdfError) {
         console.error("PDF parsing error:", pdfError);
         return res.status(400).json({ 
           message: "Failed to parse PDF file. Please ensure it's a valid PDF document." 
         });
       }
-
-      console.log("📝 Extracted text length:", pdfText.length);
 
       // Prepare AI prompt for structured data extraction
       const extractionPrompt = `
