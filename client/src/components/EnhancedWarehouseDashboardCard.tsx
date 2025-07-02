@@ -29,8 +29,8 @@ const EnhancedWarehouseDashboardCard: React.FC<EnhancedWarehouseDashboardCardPro
     try {
       setLoading(true);
       const [statsData, receiptsData] = await Promise.all([
-        warehouseService.getDashboardStats(userId),
-        warehouseService.getReceipts(userId, { limit: 5 }) // Latest 5 for dashboard
+        warehouseService.getWarehouseDashboardStats(),
+        warehouseService.getWarehouseReceipts() // Latest 5 for dashboard
       ]);
       
       console.log('📊 Warehouse Dashboard: Data loaded successfully');
