@@ -82,7 +82,7 @@ export default function Dashboard() {
 
           {/* Enhanced Warehouse Management */}
           <EnhancedWarehouseDashboardCard 
-            userId={user?.id} 
+            userId={user?.id || ''} 
             onNavigateToFull={handleWarehouseNavigation}
           />
         </div>

@@ -1,4 +1,4 @@
-// src/components/EnhancedWarehouseDashboardCard.tsx
+// client/src/components/EnhancedWarehouseDashboardCard.tsx
 import React, { useState, useEffect } from 'react';
 import { 
   Package, Plus, Eye, ArrowRight, Plane, Ship, Truck, 
@@ -6,9 +6,14 @@ import {
 } from 'lucide-react';
 import { warehouseService } from '../lib/warehouseService';
 
-const EnhancedWarehouseDashboardCard = ({ userId, onNavigateToFull }) => {
-  const [stats, setStats] = useState({});
-  const [recentReceipts, setRecentReceipts] = useState([]);
+interface EnhancedWarehouseDashboardCardProps {
+  userId: string;
+  onNavigateToFull?: (action: string, receiptId?: string) => void;
+}
+
+const EnhancedWarehouseDashboardCard: React.FC<EnhancedWarehouseDashboardCardProps> = ({ userId, onNavigateToFull }) => {
+  const [stats, setStats] = useState<any>({});
+  const [recentReceipts, setRecentReceipts] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
@@ -32,7 +37,7 @@ const EnhancedWarehouseDashboardCard = ({ userId, onNavigateToFull }) => {
     }
   };
 
-  const StatusIcon = ({ status }) => {
+  const StatusIcon: React.FC<{ status: string }> = ({ status }) => {
     const icons = {
       'received_on_hand': Package,
       'released_by_air': Plane,
@@ -46,13 +51,13 @@ const EnhancedWarehouseDashboardCard = ({ userId, onNavigateToFull }) => {
       'shipped': 'text-green-500'
     };
     
-    const Icon = icons[status] || Package;
-    const colorClass = colors[status] || 'text-gray-500';
+    const Icon = icons[status as keyof typeof icons] || Package;
+    const colorClass = colors[status as keyof typeof colors] || 'text-gray-500';
     
     return <Icon className={`w-3 h-3 ${colorClass}`} />;
   };
 
-  const StatusBadge = ({ status }) => {
+  const StatusBadge: React.FC<{ status: string }> = ({ status }) => {
     const colorClass = warehouseService.getStatusColor(status);
     return (
       <span className={`px-2 py-1 rounded-full text-xs font-medium ${colorClass} flex items-center space-x-1`}>
@@ -126,16 +131,16 @@ const EnhancedWarehouseDashboardCard = ({ userId, onNavigateToFull }) => {
           </div>
         </div>
 
-        {/* On Hand - BLUE */}
-        <div className="bg-gradient-to-r from-blue-50 to-blue-100 p-4 rounded-lg border border-blue-200">
+        {/* On Hand */}
+        <div className="bg-gradient-to-r from-green-50 to-green-100 p-4 rounded-lg border border-green-200">
           <div className="flex items-center justify-between">
             <div>
-              <p className="text-2xl font-bold text-blue-700">
+              <p className="text-2xl font-bold text-green-700">
                 {stats.by_status?.received_on_hand || 0}
               </p>
-              <p className="text-xs text-blue-600 font-medium">On Hand</p>
+              <p className="text-xs text-green-600 font-medium">On Hand</p>
             </div>
-            <Archive className="w-8 h-8 text-blue-600 opacity-80" />
+            <Archive className="w-8 h-8 text-green-600 opacity-80" />
           </div>
         </div>
 
@@ -155,41 +160,35 @@ const EnhancedWarehouseDashboardCard = ({ userId, onNavigateToFull }) => {
           </div>
         </div>
 
-        {/* Shipped - GREEN */}
-        <div className="bg-gradient-to-r from-green-50 to-green-100 p-4 rounded-lg border border-green-200">
+        {/* Shipped */}
+        <div className="bg-gradient-to-r from-purple-50 to-purple-100 p-4 rounded-lg border border-purple-200">
           <div className="flex items-center justify-between">
             <div>
-              <p className="text-2xl font-bold text-green-700">
+              <p className="text-2xl font-bold text-purple-700">
                 {stats.by_status?.shipped || 0}
               </p>
-              <p className="text-xs text-green-600 font-medium">Shipped</p>
+              <p className="text-xs text-purple-600 font-medium">Shipped</p>
             </div>
-            <Truck className="w-8 h-8 text-green-600 opacity-80" />
+            <Truck className="w-8 h-8 text-purple-600 opacity-80" />
           </div>
         </div>
       </div>
 
       {/* Volume & Weight Summary */}
-      <div className="grid grid-cols-2 gap-4 mb-6 p-4 bg-gray-50 rounded-lg">
+      <div className="grid grid-cols-3 gap-4 mb-6 p-4 bg-gray-50 rounded-lg">
         <div className="text-center">
           <p className="text-lg font-bold text-gray-800">{Math.round(stats.total_pieces || 0)}</p>
           <p className="text-xs text-gray-600">Total Pieces</p>
         </div>
-        <div className="text-center border-l border-gray-300">
+        <div className="text-center border-l border-r border-gray-300">
           <p className="text-lg font-bold text-gray-800">{Math.round(stats.total_weight || 0)}</p>
           <p className="text-xs text-gray-600">Total Weight (lbs)</p>
         </div>
-      </div>
-      
-      {/* Volume Display - Both Units */}
-      <div className="grid grid-cols-2 gap-4 mb-6 p-4 bg-blue-50 rounded-lg border border-blue-200">
         <div className="text-center">
-          <p className="text-lg font-bold text-blue-800">{Math.round(stats.total_volume || 0)}</p>
-          <p className="text-xs text-blue-600 font-medium">Cubic Feet (ft³)</p>
-        </div>
-        <div className="text-center border-l border-blue-300">
-          <p className="text-lg font-bold text-blue-800">{Math.round((stats.total_volume || 0) * 0.0283168)}</p>
-          <p className="text-xs text-blue-600 font-medium">Cubic Meters (m³)</p>
+          <p className="text-lg font-bold text-gray-800">{Math.round(stats.total_volume || 0)}</p>
+          <p className="text-xs text-gray-600">Total Volume (ft³)</p>
+          <p className="text-xs text-gray-500">{Math.round((stats.total_volume || 0) * 0.0283168)}</p>
+          <p className="text-xs text-gray-500">m³</p>
         </div>
       </div>
 
@@ -205,7 +204,7 @@ const EnhancedWarehouseDashboardCard = ({ userId, onNavigateToFull }) => {
               <div key={location} className="flex items-center justify-between text-sm">
                 <span className="text-gray-600 truncate">{location}</span>
                 <span className="font-medium text-gray-900 bg-gray-100 px-2 py-1 rounded">
-                  {count}
+                  {count as React.ReactNode}
                 </span>
               </div>
             ))}
@@ -255,7 +254,7 @@ const EnhancedWarehouseDashboardCard = ({ userId, onNavigateToFull }) => {
                     <StatusIcon status={receipt.status} />
                     <div>
                       <div className="text-sm font-medium text-blue-600">
-                        {receipt.wr_number || receipt.receipt_number}
+                        {receipt.receipt_number || receipt.wr_number}
                       </div>
                       <div className="text-xs text-gray-500">
                         {receipt.tracking_number}
@@ -279,7 +278,7 @@ const EnhancedWarehouseDashboardCard = ({ userId, onNavigateToFull }) => {
                       {receipt.total_pieces} pcs • {receipt.total_weight_lb || receipt.total_weight_lbs} lbs
                     </p>
                     {(receipt.total_volume_ft3 || receipt.total_volume_cbf) && (
-                      <p className="text-gray-500">{receipt.total_volume_ft3 || receipt.total_volume_cbf} ft³</p>
+                      <p className="text-gray-500">{Math.round(receipt.total_volume_ft3 || receipt.total_volume_cbf)} ft³ • {Math.round((receipt.total_volume_ft3 || receipt.total_volume_cbf) * 0.0283168)} m³</p>
                     )}
                   </div>
                 </div>
@@ -313,13 +312,23 @@ const EnhancedWarehouseDashboardCard = ({ userId, onNavigateToFull }) => {
         <div className="mt-6 pt-4 border-t border-gray-200">
           <div className="flex items-center justify-between text-xs">
             <div className="flex items-center space-x-4 text-gray-500">
-              <span>Last updated: {new Date().toLocaleTimeString()}</span>
+              <span className="flex items-center">
+                <TrendingUp className="w-3 h-3 mr-1" />
+                Active Operations
+              </span>
+              <span>•</span>
+              <span>
+                {(stats.by_status?.received_on_hand || 0) + 
+                 (stats.by_status?.released_by_air || 0) + 
+                 (stats.by_status?.released_by_ocean || 0)} in process
+              </span>
             </div>
             <button
               onClick={() => onNavigateToFull && onNavigateToFull('manage')}
               className="text-blue-600 hover:text-blue-800 font-medium flex items-center"
             >
-              Manage All <ArrowRight className="w-3 h-3 ml-1" />
+              Manage All
+              <ArrowRight className="w-3 h-3 ml-1" />
             </button>
           </div>
         </div>
