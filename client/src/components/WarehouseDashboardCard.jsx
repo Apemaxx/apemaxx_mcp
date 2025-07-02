@@ -2,7 +2,7 @@
 // Summary card for your existing dashboard - replaces current warehouse section
 
 import React, { useState, useEffect } from 'react';
-import { Package, Plus, Eye, ArrowRight, Clock, CheckCircle, AlertCircle } from 'lucide-react';
+import { Package, Plus, Eye, ArrowRight, Clock, CheckCircle, AlertCircle, Truck } from 'lucide-react';
 import { warehouseService } from '../lib/warehouseService';
 
 const WarehouseDashboardCard = ({ userId, onNavigateToFull }) => {
@@ -33,18 +33,16 @@ const WarehouseDashboardCard = ({ userId, onNavigateToFull }) => {
 
   const StatusIcon = ({ status }) => {
     const icons = {
-      received: CheckCircle,
-      processing: Clock,
-      stored: Package,
-      ready_for_release: AlertCircle,
-      delivered: CheckCircle
+      'Received on Hand': CheckCircle,
+      'Shipped': Truck,
+      'Release by Air': AlertCircle,
+      'Release by Ocean': Package
     };
     const colors = {
-      received: 'text-blue-500',
-      processing: 'text-yellow-500',
-      stored: 'text-green-500',
-      ready_for_release: 'text-orange-500',
-      delivered: 'text-purple-500'
+      'Received on Hand': 'text-blue-500',
+      'Shipped': 'text-green-500',
+      'Release by Air': 'text-orange-500',
+      'Release by Ocean': 'text-purple-500'
     };
     
     const Icon = icons[status] || Clock;
@@ -165,8 +163,11 @@ const WarehouseDashboardCard = ({ userId, onNavigateToFull }) => {
                   <div className="flex items-center space-x-3">
                     <StatusIcon status={receipt.status} />
                     <div className="min-w-0 flex-1">
-                      <div className="text-sm font-medium text-gray-900 truncate">
-                        {receipt.receipt_number}
+                      <div className="text-sm font-bold text-blue-600 truncate">
+                        {receipt.wr_number || receipt.receipt_number || `WR-${receipt.id}`}
+                      </div>
+                      <div className="text-xs text-gray-500 truncate">
+                        Tracking: {receipt.tracking_number}
                       </div>
                       <div className="text-xs text-gray-500 truncate">
                         {receipt.shipper_name} → {receipt.consignee_name}

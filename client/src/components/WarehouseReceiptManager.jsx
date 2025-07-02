@@ -69,18 +69,16 @@ const WarehouseReceiptManager = ({ userId }) => {
 
   const StatusIcon = ({ status }) => {
     const icons = {
-      received: CheckCircle,
-      processing: Clock,
-      stored: Package,
-      ready_for_release: AlertCircle,
-      delivered: Truck
+      'Received on Hand': CheckCircle,
+      'Shipped': Truck,
+      'Release by Air': AlertCircle,
+      'Release by Ocean': Package
     };
     const colors = {
-      received: 'text-blue-600',
-      processing: 'text-yellow-600',
-      stored: 'text-green-600',
-      ready_for_release: 'text-orange-600',
-      delivered: 'text-purple-600'
+      'Received on Hand': 'text-blue-600',
+      'Shipped': 'text-green-600',
+      'Release by Air': 'text-orange-600',
+      'Release by Ocean': 'text-purple-600'
     };
     
     const Icon = icons[status] || Clock;
@@ -89,16 +87,15 @@ const WarehouseReceiptManager = ({ userId }) => {
 
   const StatusBadge = ({ status }) => {
     const colors = {
-      received: 'bg-blue-100 text-blue-800',
-      processing: 'bg-yellow-100 text-yellow-800',
-      stored: 'bg-green-100 text-green-800',
-      ready_for_release: 'bg-orange-100 text-orange-800',
-      delivered: 'bg-purple-100 text-purple-800'
+      'Received on Hand': 'bg-blue-100 text-blue-800',
+      'Shipped': 'bg-green-100 text-green-800', 
+      'Release by Air': 'bg-orange-100 text-orange-800',
+      'Release by Ocean': 'bg-purple-100 text-purple-800'
     };
 
     return (
       <span className={`px-2 py-1 rounded-full text-xs font-medium ${colors[status] || 'bg-gray-100 text-gray-800'}`}>
-        {status?.replace('_', ' ').toUpperCase() || 'UNKNOWN'}
+        {status || 'UNKNOWN'}
       </span>
     );
   };
@@ -485,7 +482,7 @@ const WarehouseReceiptManager = ({ userId }) => {
               <Search className="w-5 h-5 absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400" />
               <input
                 type="text"
-                placeholder="Search by tracking number, carrier, or shipper..."
+                placeholder="Search by WR number, tracking number, carrier, or shipper..."
                 value={searchTerm}
                 onChange={(e) => setSearchTerm(e.target.value)}
                 onKeyPress={(e) => e.key === 'Enter' && handleSearch()}
@@ -500,11 +497,10 @@ const WarehouseReceiptManager = ({ userId }) => {
               className="px-4 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
             >
               <option value="all">All Status</option>
-              <option value="received">Received</option>
-              <option value="processing">Processing</option>
-              <option value="stored">Stored</option>
-              <option value="ready_for_release">Ready for Release</option>
-              <option value="delivered">Delivered</option>
+              <option value="Received on Hand">Received on Hand</option>
+              <option value="Shipped">Shipped</option>
+              <option value="Release by Air">Release by Air</option>
+              <option value="Release by Ocean">Release by Ocean</option>
             </select>
             <button
               onClick={handleSearch}
@@ -539,8 +535,8 @@ const WarehouseReceiptManager = ({ userId }) => {
                 <div className="flex items-center justify-between">
                   <div className="flex-1">
                     <div className="flex items-center space-x-3 mb-2">
-                      <h4 className="text-lg font-medium text-gray-900">
-                        {receipt.receipt_number || receipt.wr_number}
+                      <h4 className="text-lg font-bold text-blue-600">
+                        {receipt.wr_number || receipt.receipt_number || `WR-${receipt.id}`}
                       </h4>
                       <StatusBadge status={receipt.status} />
                     </div>
@@ -586,7 +582,7 @@ const WarehouseReceiptManager = ({ userId }) => {
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
           <div className="bg-white rounded-lg p-6 max-w-4xl w-full mx-4 max-h-[90vh] overflow-y-auto">
             <div className="flex justify-between items-center mb-6">
-              <h3 className="text-xl font-semibold">Receipt Details: {selectedReceipt.receipt_number || selectedReceipt.wr_number}</h3>
+              <h3 className="text-xl font-semibold">Receipt Details: <span className="text-blue-600 font-bold">{selectedReceipt.wr_number || selectedReceipt.receipt_number || `WR-${selectedReceipt.id}`}</span></h3>
               <button 
                 onClick={() => setSelectedReceipt(null)} 
                 className="text-gray-500 hover:text-gray-700"

@@ -96,7 +96,7 @@ export const warehouseService = {
         warehouse_location: receiptData.warehouse_location,
         notes: receiptData.notes,
         user_id: receiptData.user_id,
-        status: 'received'
+        status: 'Received on Hand'
       };
 
       // Create receipt record
@@ -193,8 +193,8 @@ export const warehouseService = {
       if (error) throw error;
 
       const totalReceipts = receipts?.length || 0;
-      const activeReceipts = receipts?.filter(r => r.status !== 'delivered').length || 0;
-      const readyForRelease = receipts?.filter(r => r.status === 'ready_for_release').length || 0;
+      const activeReceipts = receipts?.filter(r => r.status !== 'Shipped').length || 0;
+      const readyForRelease = receipts?.filter(r => r.status === 'Release by Air' || r.status === 'Release by Ocean').length || 0;
       const totalPieces = receipts?.reduce((sum, r) => sum + (r.total_pieces || 0), 0) || 0;
       const totalWeight = receipts?.reduce((sum, r) => sum + (r.total_weight_lb || 0), 0) || 0;
 
@@ -258,7 +258,7 @@ export const warehouseService = {
         .from('warehouse_receipt_summary')
         .select('*')
         .eq('user_id', userId)
-        .or(`receipt_number.ilike.%${searchTerm}%,tracking_number.ilike.%${searchTerm}%,shipper_name.ilike.%${searchTerm}%,carrier_name.ilike.%${searchTerm}%`)
+        .or(`receipt_number.ilike.%${searchTerm}%,wr_number.ilike.%${searchTerm}%,tracking_number.ilike.%${searchTerm}%,shipper_name.ilike.%${searchTerm}%,carrier_name.ilike.%${searchTerm}%`)
         .order('received_date', { ascending: false });
       
       if (error) {
@@ -267,7 +267,7 @@ export const warehouseService = {
           .from('warehouse_receipts')
           .select('*')
           .eq('user_id', userId)
-          .or(`tracking_number.ilike.%${searchTerm}%,shipper_name.ilike.%${searchTerm}%,carrier_name.ilike.%${searchTerm}%`)
+          .or(`wr_number.ilike.%${searchTerm}%,tracking_number.ilike.%${searchTerm}%,shipper_name.ilike.%${searchTerm}%,carrier_name.ilike.%${searchTerm}%`)
           .order('received_date', { ascending: false });
         
         if (fallbackError) throw fallbackError;
