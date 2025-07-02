@@ -182,7 +182,7 @@ The application uses the following main entities:
   - **Location Grouping**: Dynamic grouping by actual warehouse locations from database
   - **Statistics**: Live dashboard stats calculated from real warehouse receipt data
   - **Authentication**: Secure API access with JWT token validation
-- July 2, 2025: **ONE-CLICK EXPORT FEATURE COMPLETE**
+- July 2, 2025: **ONE-CLICK EXPORT FEATURE COMPLETE** (Later removed per user request)
   - **Export Service**: Comprehensive warehouseExport.js with CSV and JSON format support
   - **Export Component**: Professional ExportButton with dropdown options and loading states
   - **Dashboard Integration**: Export button added to warehouse dashboard card (performance variant)
@@ -191,6 +191,12 @@ The application uses the following main entities:
   - **Volume Conversion**: Automatic ft³ to m³ conversion in all exports (formula: ft³ × 0.0283168)
   - **File Downloads**: Timestamped file naming and automatic browser downloads
   - **Production Ready**: Export functionality ready for real warehouse receipt data
+- July 2, 2025: **EXPORT MENUS REMOVED FROM FOOTER**
+  - **User Request**: Eliminated export report menus from footer sections per user preference
+  - **Dashboard Card**: Removed ExportButton from EnhancedWarehouseDashboardCard footer
+  - **Warehouse Manager**: Removed ExportButton from ProfessionalWarehouseManager toolbar
+  - **Clean Interface**: Simplified footer areas with cleaner, streamlined design
+  - **Functionality**: Export services still available but UI access points removed
 
 ## Current Status
 - ✅ **AUTHENTICATION COMPLETELY WORKING** with Supabase Auth (signInWithPassword)
