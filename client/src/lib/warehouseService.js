@@ -20,7 +20,7 @@ export const warehouseService = {
       
       const response = await fetch(`/api/warehouse/receipts?${params.toString()}`, {
         headers: {
-          'Authorization': `Bearer ${localStorage.getItem('authToken')}`,
+          'Authorization': `Bearer ${localStorage.getItem('token')}`,
           'Content-Type': 'application/json'
         }
       });
@@ -140,7 +140,7 @@ export const warehouseService = {
     try {
       const response = await fetch('/api/warehouse/receipts/by-location', {
         headers: {
-          'Authorization': `Bearer ${localStorage.getItem('authToken')}`,
+          'Authorization': `Bearer ${localStorage.getItem('token')}`,
           'Content-Type': 'application/json'
         }
       });
@@ -167,7 +167,7 @@ export const warehouseService = {
     try {
       const response = await fetch('/api/warehouse/stats', {
         headers: {
-          'Authorization': `Bearer ${localStorage.getItem('authToken')}`,
+          'Authorization': `Bearer ${localStorage.getItem('token')}`,
           'Content-Type': 'application/json'
         }
       });
@@ -447,7 +447,7 @@ export const warehouseService = {
     try {
       const response = await fetch(`/api/warehouse/receipts/search?q=${encodeURIComponent(searchTerm)}`, {
         headers: {
-          'Authorization': `Bearer ${localStorage.getItem('authToken')}`,
+          'Authorization': `Bearer ${localStorage.getItem('token')}`,
           'Content-Type': 'application/json'
         }
       });

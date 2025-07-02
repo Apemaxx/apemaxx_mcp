@@ -393,7 +393,7 @@ export class SupabaseStorage implements IStorage {
       .from('warehouse_receipts')
       .select(`
         *,
-        warehouses!inner(name, code)
+        warehouses!inner(name)
       `)
       .eq('user_id', userId)
       .order('received_date', { ascending: false });
@@ -412,8 +412,7 @@ export class SupabaseStorage implements IStorage {
     // Transform data to include warehouse location name
     return (data || []).map(receipt => ({
       ...receipt,
-      warehouse_location_name: receipt.warehouses?.name || 'Unknown Location',
-      warehouse_location_code: receipt.warehouses?.code || 'UNK'
+      warehouse_location_name: receipt.warehouses?.name || 'Unknown Location'
     })) as WarehouseReceipt[];
   }
 
@@ -437,7 +436,7 @@ export class SupabaseStorage implements IStorage {
       .from('warehouse_receipts')
       .select(`
         *,
-        warehouses!inner(name, code),
+        warehouses!inner(name),
         shippers!inner(name),
         consignees!inner(name)
       `)
@@ -453,7 +452,6 @@ export class SupabaseStorage implements IStorage {
     return (data || []).map(receipt => ({
       ...receipt,
       warehouse_location_name: receipt.warehouses?.name || 'Unknown Location',
-      warehouse_location_code: receipt.warehouses?.code || 'UNK',
       shipper_name: receipt.shippers?.name || 'Unknown Shipper',
       consignee_name: receipt.consignees?.name || 'Unknown Consignee'
     })) as WarehouseReceipt[];
