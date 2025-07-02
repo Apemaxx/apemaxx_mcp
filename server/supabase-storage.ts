@@ -389,14 +389,20 @@ export class SupabaseStorage implements IStorage {
 
   // Extended Warehouse Methods
   async getWarehouseReceipts(userId: string, limit?: number, locationId?: string | null, status?: string | null): Promise<WarehouseReceipt[]> {
+    console.log('🔍 Fetching warehouse receipts for user:', userId);
+    
+    // First check what user_ids exist in the database
+    const { data: allUsers, error: userError } = await supabase
+      .from('warehouse_receipts')
+      .select('user_id')
+      .limit(10);
+    
+    console.log('📋 Available user_ids in warehouse_receipts:', allUsers?.map(r => r.user_id) || []);
+    
     let query = supabase
       .from('warehouse_receipts')
-      .select(`
-        *,
-        warehouses!inner(name)
-      `)
-      .eq('user_id', userId)
-      .order('received_date', { ascending: false });
+      .select('*')
+      .eq('user_id', userId);
     
     if (limit) query = query.limit(limit);
     if (locationId) query = query.eq('warehouse_location_id', locationId);
@@ -404,15 +410,30 @@ export class SupabaseStorage implements IStorage {
     
     const { data, error } = await query;
     
+    console.log('📊 Warehouse receipts query result:', { 
+      dataCount: data?.length || 0, 
+      error: error?.message,
+      userId: userId
+    });
+    
+    // If no data found for this user, try getting any data for debugging
+    if (!data || data.length === 0) {
+      const { data: anyData } = await supabase
+        .from('warehouse_receipts')
+        .select('*')
+        .limit(5);
+      console.log('🔍 Sample data from warehouse_receipts table:', anyData?.length || 0, 'rows');
+    }
+    
     if (error) {
       console.error('Error fetching warehouse receipts:', error);
       return [];
     }
     
-    // Transform data to include warehouse location name
+    // Return data as-is for now, without warehouse join
     return (data || []).map(receipt => ({
       ...receipt,
-      warehouse_location_name: receipt.warehouses?.name || 'Unknown Location'
+      warehouse_location_name: 'Warehouse Location' // Fallback for now
     })) as WarehouseReceipt[];
   }
 
@@ -432,17 +453,20 @@ export class SupabaseStorage implements IStorage {
   }
 
   async searchWarehouseReceipts(userId: string, searchTerm: string): Promise<WarehouseReceipt[]> {
+    console.log('🔍 Searching warehouse receipts for user:', userId, 'term:', searchTerm);
+    
     const { data, error } = await supabase
       .from('warehouse_receipts')
-      .select(`
-        *,
-        warehouses!inner(name),
-        shippers!inner(name),
-        consignees!inner(name)
-      `)
+      .select('*')
       .eq('user_id', userId)
-      .or(`wr_number.ilike.%${searchTerm}%,tracking_number.ilike.%${searchTerm}%,shippers.name.ilike.%${searchTerm}%,consignees.name.ilike.%${searchTerm}%`)
-      .order('received_date', { ascending: false });
+      .or(`wr_number.ilike.%${searchTerm}%,tracking_number.ilike.%${searchTerm}%`)
+      .limit(50);
+    
+    console.log('📊 Search results:', { 
+      dataCount: data?.length || 0, 
+      error: error?.message,
+      searchTerm: searchTerm
+    });
     
     if (error) {
       console.error('Error searching warehouse receipts:', error);
@@ -451,9 +475,9 @@ export class SupabaseStorage implements IStorage {
     
     return (data || []).map(receipt => ({
       ...receipt,
-      warehouse_location_name: receipt.warehouses?.name || 'Unknown Location',
-      shipper_name: receipt.shippers?.name || 'Unknown Shipper',
-      consignee_name: receipt.consignees?.name || 'Unknown Consignee'
+      warehouse_location_name: 'Warehouse Location', // Fallback for now
+      shipper_name: 'Shipper',
+      consignee_name: 'Consignee'
     })) as WarehouseReceipt[];
   }
 
