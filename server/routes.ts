@@ -471,32 +471,27 @@ export async function registerRoutes(app: Express): Promise<Server> {
       // Extract text from PDF with error handling
       let pdfText = '';
       try {
-        const pdfjs = await import('pdfjs-dist');
+        // Import pdf-parse dynamically to avoid initialization issues
+        const pdfParse = await import('pdf-parse');
         
-        // Load PDF document
-        const loadingTask = pdfjs.getDocument({
-          data: new Uint8Array(req.file.buffer),
+        // Ensure we have a proper buffer
+        const pdfBuffer = Buffer.isBuffer(req.file.buffer) ? req.file.buffer : Buffer.from(req.file.buffer);
+        
+        // Parse PDF with timeout and options
+        const pdfData = await pdfParse.default(pdfBuffer, {
+          max: 0, // Parse all pages
+          version: 'v1.10.100' // Specify version for stability
         });
         
-        const pdfDocument = await loadingTask.promise;
-        const numPages = pdfDocument.numPages;
-        
-        // Extract text from all pages
-        const textPromises = [];
-        for (let pageNum = 1; pageNum <= numPages; pageNum++) {
-          textPromises.push(
-            pdfDocument.getPage(pageNum).then((page: any) => 
-              page.getTextContent().then((textContent: any) => 
-                textContent.items.map((item: any) => item.str).join(' ')
-              )
-            )
-          );
-        }
-        
-        const pageTexts = await Promise.all(textPromises);
-        pdfText = pageTexts.join('\n');
-        
+        pdfText = pdfData.text || '';
         console.log("📝 Extracted text length:", pdfText.length);
+        console.log("📄 PDF pages:", pdfData.numpages);
+        
+        if (!pdfText.trim()) {
+          return res.status(400).json({ 
+            message: "PDF appears to be empty or contains only images. Please ensure the PDF contains readable text." 
+          });
+        }
         
       } catch (pdfError) {
         console.error("PDF parsing error:", pdfError);
