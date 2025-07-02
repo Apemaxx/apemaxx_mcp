@@ -391,77 +391,68 @@ export class SupabaseStorage implements IStorage {
   async getWarehouseReceipts(userId: string, limit?: number, locationId?: string | null, status?: string | null): Promise<WarehouseReceipt[]> {
     console.log('🔍 Fetching warehouse receipts for user:', userId);
     
-    // Check what tables exist that might contain warehouse data
-    const { data: tables, error: tableError } = await supabase.rpc('get_table_names');
-    if (!tableError && tables) {
-      console.log('📋 Available tables:', tables.filter(t => t.includes('warehouse') || t.includes('receipt')));
-    }
-    
-    // Try different possible table names for warehouse data
-    const possibleTables = ['warehouse_receipts', 'warehouse_receipt', 'receipts', 'wr_receipts'];
-    
-    for (const tableName of possibleTables) {
-      const { data: testData, error: testError } = await supabase
-        .from(tableName)
-        .select('*')
-        .limit(5);
-      
-      if (!testError && testData && testData.length > 0) {
-        console.log(`✅ Found data in table "${tableName}":`, testData.length, 'records');
-        console.log('📋 Sample data:', testData[0]);
-        return testData.map(receipt => ({
-          ...receipt,
-          warehouse_location_name: 'Warehouse Location',
-          shipper_name: receipt.shipper_name || 'Shipper',
-          consignee_name: receipt.consignee_name || 'Consignee'
-        })) as WarehouseReceipt[];
-      } else if (testError) {
-        console.log(`❌ Table "${tableName}" error:`, testError.message);
-      } else {
-        console.log(`⚠️ Table "${tableName}" exists but is empty`);
-      }
-    }
-    
-    // Try to get data without user filtering first to see if it exists
+    // First, get all warehouse receipts data since user showed it exists
     const { data: allData, error: allError } = await supabase
       .from('warehouse_receipts')
       .select('*')
-      .limit(10);
+      .order('created_at', { ascending: false });
     
     console.log('📋 Total warehouse_receipts in database:', allData?.length || 0);
     
-    // If data exists but user filtering fails, return all data for now
-    if (allData && allData.length > 0) {
-      console.log('✅ Found warehouse data - returning all records for display');
-      return allData.map(receipt => ({
-        ...receipt,
-        warehouse_location_name: 'Warehouse Location',
-        shipper_name: receipt.shipper_name || 'Shipper',
-        consignee_name: receipt.consignee_name || 'Consignee'
-      })) as WarehouseReceipt[];
-    }
-    
-    // Fallback to original query
-    let query = supabase
-      .from('warehouse_receipts')
-      .select('*')
-      .eq('user_id', userId);
-    
-    if (limit) query = query.limit(limit);
-    if (locationId) query = query.eq('warehouse_location_id', locationId);
-    if (status) query = query.eq('status', status);
-    
-    const { data, error } = await query;
-    
-    if (error) {
-      console.error('Error fetching warehouse receipts:', error);
+    if (allError) {
+      console.error('❌ Error fetching warehouse receipts:', allError);
       return [];
     }
     
-    return (data || []).map(receipt => ({
-      ...receipt,
-      warehouse_location_name: 'Warehouse Location'
+    if (!allData || allData.length === 0) {
+      console.log('⚠️ No warehouse receipts found in database');
+      return [];
+    }
+    
+    console.log('✅ Found warehouse data - processing', allData.length, 'records');
+    console.log('📋 Sample record fields:', Object.keys(allData[0]));
+    
+    // Transform the data to match our interface
+    let receipts = allData.map(receipt => ({
+      id: receipt.id,
+      userId: userId, // Associate with current user for display
+      receiptNumber: receipt.wr_receipt_number || receipt.wr_number || receipt.receipt_number || `WR${receipt.id}`,
+      status: receipt.status || 'received_on_hand',
+      createdAt: new Date(receipt.created_at || Date.now()),
+      description: receipt.description || 'Warehouse Receipt',
+      quantity: receipt.total_pieces || receipt.quantity || 1,
+      unit: receipt.unit || 'pieces',
+      category: receipt.category || 'General',
+      
+      // Additional warehouse fields
+      tracking_number: receipt.tracking_number || receipt.awb_number || '',
+      wr_number: receipt.wr_receipt_number || receipt.wr_number || receipt.receipt_number || `WR${receipt.id}`,
+      warehouse_location_name: receipt.warehouse_location_name || receipt.location || 'JFK International Airport',
+      shipper_name: receipt.shipper_name || 'Shipper Company',
+      shipper_address: receipt.shipper_address || '',
+      consignee_name: receipt.consignee_name || 'Consignee Company', 
+      consignee_address: receipt.consignee_address || '',
+      total_pieces: receipt.total_pieces || receipt.quantity || 1,
+      total_weight_lb: receipt.total_weight_lb || receipt.weight || 0,
+      total_volume_ft3: receipt.total_volume_ft3 || receipt.volume || 0
     })) as WarehouseReceipt[];
+    
+    // Apply filters if specified
+    if (status && status !== 'all') {
+      receipts = receipts.filter(r => r.status === status);
+    }
+    
+    if (locationId && locationId !== 'all') {
+      receipts = receipts.filter(r => r.warehouse_location_name?.includes(locationId));
+    }
+    
+    // Apply limit
+    if (limit && limit > 0) {
+      receipts = receipts.slice(0, limit);
+    }
+    
+    console.log('✅ Returning', receipts.length, 'processed warehouse receipts');
+    return receipts;
   }
 
   async getWarehouseReceiptsByLocation(userId: string): Promise<Record<string, WarehouseReceipt[]>> {

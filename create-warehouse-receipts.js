@@ -1,9 +1,12 @@
 // Create sample warehouse receipts matching your described inventory
 import { createClient } from '@supabase/supabase-js'
+import { config } from 'dotenv'
+
+config()
 
 const supabase = createClient(
-  process.env.VITE_SUPABASE_URL,
-  process.env.VITE_SUPABASE_ANON_KEY
+  'https://bqmpupymchanohpfzglw.supabase.co',
+  'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImJxbXB1cHltY2hhbm9ocGZ6Z2x3Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTA5MzY2ODcsImV4cCI6MjA2NjUxMjY4N30.VnlHnThWyiSC4f2wX7iDl1wAmqiS0Fv0FowBTGmKa-8'
 )
 
 const userId = 'ce50d88a-38ef-4749-9f38-1d616716162d'; // Your user ID

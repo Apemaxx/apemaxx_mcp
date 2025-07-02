@@ -169,6 +169,15 @@ The application uses the following main entities:
   - **Location Grouping**: Dynamic grouping by actual warehouse locations from database
   - **Statistics**: Live dashboard stats calculated from real warehouse receipt data
   - **Authentication**: Secure API access with JWT token validation
+- July 2, 2025: **ONE-CLICK EXPORT FEATURE COMPLETE**
+  - **Export Service**: Comprehensive warehouseExport.js with CSV and JSON format support
+  - **Export Component**: Professional ExportButton with dropdown options and loading states
+  - **Dashboard Integration**: Export button added to warehouse dashboard card (performance variant)
+  - **Manager Integration**: Export button added to professional warehouse manager (receipts variant)
+  - **Data Formats**: Support for detailed warehouse receipts and performance summary exports
+  - **Volume Conversion**: Automatic ft³ to m³ conversion in all exports (formula: ft³ × 0.0283168)
+  - **File Downloads**: Timestamped file naming and automatic browser downloads
+  - **Production Ready**: Export functionality ready for real warehouse receipt data
 
 ## Current Status
 - ✅ **AUTHENTICATION COMPLETELY WORKING** with Supabase Auth (signInWithPassword)
