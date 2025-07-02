@@ -471,21 +471,28 @@ export async function registerRoutes(app: Express): Promise<Server> {
       // Extract text from PDF with error handling
       let pdfText = '';
       try {
-        // Import pdf-parse dynamically to avoid initialization issues
-        const pdfParse = await import('pdf-parse');
+        const pdfTextExtract = await import('pdf-text-extract');
+        
+        // Create a promise-based wrapper for the callback-based function
+        const extractText = (buffer: Buffer): Promise<string> => {
+          return new Promise((resolve, reject) => {
+            pdfTextExtract.default(buffer, (err: any, text: string) => {
+              if (err) {
+                reject(err);
+              } else {
+                resolve(text || '');
+              }
+            });
+          });
+        };
         
         // Ensure we have a proper buffer
         const pdfBuffer = Buffer.isBuffer(req.file.buffer) ? req.file.buffer : Buffer.from(req.file.buffer);
         
-        // Parse PDF with timeout and options
-        const pdfData = await pdfParse.default(pdfBuffer, {
-          max: 0, // Parse all pages
-          version: 'v1.10.100' // Specify version for stability
-        });
+        // Extract text from PDF
+        pdfText = await extractText(pdfBuffer);
         
-        pdfText = pdfData.text || '';
         console.log("📝 Extracted text length:", pdfText.length);
-        console.log("📄 PDF pages:", pdfData.numpages);
         
         if (!pdfText.trim()) {
           return res.status(400).json({ 
