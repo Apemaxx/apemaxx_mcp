@@ -1,0 +1,354 @@
+// ========================================
+// STEP 4: INTEGRATION & ROUTING SETUP
+// ========================================
+
+// 1. UPDATE YOUR MAIN DASHBOARD COMPONENT
+// Replace your existing warehouse dashboard card with the enhanced version
+
+// In your main dashboard component (e.g., Dashboard.jsx):
+import React from 'react';
+import EnhancedWarehouseDashboardCard from './components/EnhancedWarehouseDashboardCard';
+
+const Dashboard = ({ user }) => {
+  const handleWarehouseNavigation = (action, receiptId = null) => {
+    switch (action) {
+      case 'create':
+        // Navigate to warehouse with create mode
+        window.location.hash = '/warehouse?mode=create';
+        break;
+      case 'view':
+        if (receiptId) {
+          // Navigate to specific receipt
+          window.location.hash = `/warehouse?receipt=${receiptId}`;
+        } else {
+          // Navigate to warehouse list view
+          window.location.hash = '/warehouse?view=list';
+        }
+        break;
+      case 'manage':
+        // Navigate to warehouse management
+        window.location.hash = '/warehouse';
+        break;
+      default:
+        window.location.hash = '/warehouse';
+    }
+  };
+
+  return (
+    <div className="min-h-screen bg-gray-50 p-6">
+      <div className="max-w-7xl mx-auto">
+        <h1 className="text-3xl font-bold text-gray-900 mb-8">Dashboard</h1>
+        
+        <div className="grid grid-cols-1 lg:grid-cols-2 xl:grid-cols-3 gap-6">
+          {/* Enhanced Warehouse Dashboard Card */}
+          <EnhancedWarehouseDashboardCard 
+            userId={user?.id} 
+            onNavigateToFull={handleWarehouseNavigation}
+          />
+          
+          {/* Your other dashboard cards */}
+          {/* ... */}
+        </div>
+      </div>
+    </div>
+  );
+};
+
+export default Dashboard;
+
+// ========================================
+// 2. UPDATE YOUR ROUTING SETUP
+// ========================================
+
+// In your main App.jsx or routing component:
+import React, { useState, useEffect } from 'react';
+import Dashboard from './components/Dashboard';
+import ProfessionalWarehouseManager from './components/ProfessionalWarehouseManager';
+
+const App = () => {
+  const [user, setUser] = useState(null);
+  const [currentPath, setCurrentPath] = useState('/');
+
+  useEffect(() => {
+    // Listen for hash changes for client-side routing
+    const handleHashChange = () => {
+      setCurrentPath(window.location.hash.slice(1) || '/');
+    };
+
+    window.addEventListener('hashchange', handleHashChange);
+    handleHashChange(); // Set initial path
+
+    return () => window.removeEventListener('hashchange', handleHashChange);
+  }, []);
+
+  useEffect(() => {
+    // Get current user from Supabase auth
+    const getCurrentUser = async () => {
+      const { data: { user } } = await supabase.auth.getUser();
+      setUser(user);
+    };
+
+    getCurrentUser();
+
+    // Listen for auth changes
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
+      setUser(session?.user ?? null);
+    });
+
+    return () => subscription.unsubscribe();
+  }, []);
+
+  // Simple client-side routing
+  const renderCurrentPage = () => {
+    const path = currentPath.split('?')[0]; // Remove query parameters for routing
+    
+    switch (path) {
+      case '/warehouse':
+        return <ProfessionalWarehouseManager userId={user?.id} />;
+      case '/':
+      default:
+        return <Dashboard user={user} />;
+    }
+  };
+
+  if (!user) {
+    return (
+      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
+        <div className="text-center">
+          <h1 className="text-2xl font-bold text-gray-900 mb-4">Please Log In</h1>
+          <p className="text-gray-600">You need to be logged in to access the warehouse management system.</p>
+        </div>
+      </div>
+    );
+  }
+
+  return (
+    <div className="min-h-screen bg-gray-50">
+      {/* Navigation Header */}
+      <nav className="bg-white shadow-sm border-b border-gray-200">
+        <div className="max-w-7xl mx-auto px-6">
+          <div className="flex justify-between items-center h-16">
+            <div className="flex items-center space-x-8">
+              <div className="text-xl font-bold text-gray-900">
+                🏭 Logistics Management
+              </div>
+              <div className="flex space-x-4">
+                <a
+                  href="#/"
+                  className={`px-3 py-2 rounded-md text-sm font-medium ${
+                    currentPath === '/' ? 'bg-blue-100 text-blue-700' : 'text-gray-600 hover:text-gray-900'
+                  }`}
+                >
+                  Dashboard
+                </a>
+                <a
+                  href="#/warehouse"
+                  className={`px-3 py-2 rounded-md text-sm font-medium ${
+                    currentPath.startsWith('/warehouse') ? 'bg-blue-100 text-blue-700' : 'text-gray-600 hover:text-gray-900'
+                  }`}
+                >
+                  Warehouse
+                </a>
+              </div>
+            </div>
+            
+            <div className="flex items-center space-x-4">
+              <span className="text-sm text-gray-600">Welcome, {user.email}</span>
+              <button
+                onClick={() => supabase.auth.signOut()}
+                className="text-sm text-gray-600 hover:text-gray-900"
+              >
+                Sign Out
+              </button>
+            </div>
+          </div>
+        </div>
+      </nav>
+
+      {/* Main Content */}
+      {renderCurrentPage()}
+    </div>
+  );
+};
+
+export default App;
+
+// ========================================
+// 3. ALTERNATIVE: REACT ROUTER SETUP
+// ========================================
+
+// If you're using React Router, here's the setup:
+import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
+
+const AppWithRouter = () => {
+  const [user, setUser] = useState(null);
+
+  useEffect(() => {
+    const getCurrentUser = async () => {
+      const { data: { user } } = await supabase.auth.getUser();
+      setUser(user);
+    };
+
+    getCurrentUser();
+
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
+      setUser(session?.user ?? null);
+    });
+
+    return () => subscription.unsubscribe();
+  }, []);
+
+  if (!user) {
+    return <LoginComponent />;
+  }
+
+  return (
+    <Router>
+      <div className="min-h-screen bg-gray-50">
+        <nav className="bg-white shadow-sm border-b border-gray-200">
+          <div className="max-w-7xl mx-auto px-6">
+            <div className="flex justify-between items-center h-16">
+              <div className="flex items-center space-x-8">
+                <div className="text-xl font-bold text-gray-900">
+                  🏭 Logistics Management
+                </div>
+                <div className="flex space-x-4">
+                  <Link
+                    to="/"
+                    className="px-3 py-2 rounded-md text-sm font-medium text-gray-600 hover:text-gray-900"
+                  >
+                    Dashboard
+                  </Link>
+                  <Link
+                    to="/warehouse"
+                    className="px-3 py-2 rounded-md text-sm font-medium text-gray-600 hover:text-gray-900"
+                  >
+                    Warehouse
+                  </Link>
+                </div>
+              </div>
+              
+              <div className="flex items-center space-x-4">
+                <span className="text-sm text-gray-600">Welcome, {user.email}</span>
+                <button
+                  onClick={() => supabase.auth.signOut()}
+                  className="text-sm text-gray-600 hover:text-gray-900"
+                >
+                  Sign Out
+                </button>
+              </div>
+            </div>
+          </div>
+        </nav>
+
+        <Routes>
+          <Route 
+            path="/" 
+            element={<Dashboard user={user} />} 
+          />
+          <Route 
+            path="/warehouse" 
+            element={<ProfessionalWarehouseManager userId={user.id} />} 
+          />
+          <Route 
+            path="*" 
+            element={<Navigate to="/" replace />} 
+          />
+        </Routes>
+      </div>
+    </Router>
+  );
+};
+
+// ========================================
+// 4. SUPABASE CLIENT SETUP
+// ========================================
+
+// Make sure your Supabase client is properly configured
+// In client/src/lib/supabase.js:
+
+import { createClient } from '@supabase/supabase-js';
+
+const supabaseUrl = 'https://bqmpupymchanohpfzglw.supabase.co';
+const supabaseAnonKey = 'your-anon-key-here'; // Get this from your Supabase dashboard
+
+export const supabase = createClient(supabaseUrl, supabaseAnonKey, {
+  auth: {
+    autoRefreshToken: true,
+    persistSession: true,
+    detectSessionInUrl: true
+  }
+});
+
+// ========================================
+// 5. CSS/TAILWIND REQUIREMENTS
+// ========================================
+
+// Make sure you have Tailwind CSS installed and configured
+// The components use these Tailwind classes extensively
+
+// Install Tailwind CSS if not already installed:
+// npm install -D tailwindcss postcss autoprefixer
+// npx tailwindcss init -p
+
+// In your tailwind.config.js:
+module.exports = {
+  content: [
+    "./src/**/*.{js,jsx,ts,tsx}",
+  ],
+  theme: {
+    extend: {},
+  },
+  plugins: [],
+}
+
+// In your main CSS file (e.g., src/index.css):
+/*
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+*/
+
+// ========================================
+// 6. TESTING YOUR IMPLEMENTATION
+// ========================================
+
+// 1. Start your development server
+// 2. Navigate to your dashboard
+// 3. You should see the enhanced warehouse dashboard card
+// 4. Click "View All" or "Manage" to go to the warehouse interface
+// 5. Your existing 5 receipts should display in professional format
+// 6. Test creating a new receipt
+// 7. Test status updates and search functionality
+
+// ========================================
+// 7. ENVIRONMENT VARIABLES
+// ========================================
+
+// Create a .env file in your project root:
+/*
+REACT_APP_SUPABASE_URL=https://bqmpupymchanohpfzglw.supabase.co
+REACT_APP_SUPABASE_ANON_KEY=your-anon-key-here
+*/
+
+// Then use in your supabase.js:
+const supabaseUrl = process.env.REACT_APP_SUPABASE_URL;
+const supabaseAnonKey = process.env.REACT_APP_SUPABASE_ANON_KEY;
+
+// ========================================
+// 8. FINAL VERIFICATION CHECKLIST
+// ========================================
+
+/*
+✅ Enhanced warehouse service imported and working
+✅ Enhanced dashboard card displaying real analytics
+✅ Professional warehouse manager accessible via routing
+✅ PDF-style receipt display showing your data
+✅ Status updates functional
+✅ Search and filtering working
+✅ Address book integration ready
+✅ File upload system configured
+✅ Responsive design on mobile devices
+✅ User authentication and security working
+✅ Real data from your 5 receipts displaying properly
+*/

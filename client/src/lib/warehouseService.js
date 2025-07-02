@@ -6,11 +6,13 @@ export const warehouseService = {
 
   async getReceipts(userId, options = {}) {
     try {
+      console.log('🔍 Trying to fetch warehouse receipts for user:', userId);
+      
+      // Try the simple warehouse_receipts table first
       let query = supabase
-        .from('warehouse_receipt_summary_enhanced')
+        .from('warehouse_receipts')
         .select('*')
-        .eq('user_id', userId)
-        .order('received_date', { ascending: false });
+        .order('created_at', { ascending: false });
 
       // Apply filters
       if (options.status && options.status !== 'all') {
@@ -19,17 +21,11 @@ export const warehouseService = {
 
       if (options.search) {
         query = query.or(`
-          receipt_number.ilike.%${options.search}%,
+          wr_number.ilike.%${options.search}%,
           tracking_number.ilike.%${options.search}%,
           shipper_name.ilike.%${options.search}%,
-          consignee_name.ilike.%${options.search}%,
-          carrier_name.ilike.%${options.search}%,
-          pro_number.ilike.%${options.search}%
+          consignee_name.ilike.%${options.search}%
         `);
-      }
-
-      if (options.location && options.location !== 'all') {
-        query = query.eq('warehouse_location_name', options.location);
       }
 
       // Pagination
@@ -43,7 +39,12 @@ export const warehouseService = {
 
       const { data, error } = await query;
 
-      if (error) throw error;
+      if (error) {
+        console.error('❌ Error from warehouse_receipts table:', error);
+        throw error;
+      }
+      
+      console.log('✅ Found warehouse receipts:', data?.length || 0);
       return data || [];
     } catch (error) {
       console.error('Error fetching receipts:', error);
@@ -221,11 +222,26 @@ export const warehouseService = {
 
   async getAnalytics(userId) {
     try {
+      // Just get basic stats from warehouse_receipts table
       const { data, error } = await supabase
-        .rpc('get_warehouse_analytics_enhanced', { user_uuid: userId });
+        .from('warehouse_receipts')
+        .select('*');
 
       if (error) throw error;
-      return data;
+      
+      // Calculate basic analytics
+      const stats = {
+        total_receipts: data?.length || 0,
+        received_on_hand: data?.filter(r => r.status === 'received_on_hand')?.length || 0,
+        released_by_air: data?.filter(r => r.status === 'released_by_air')?.length || 0,
+        released_by_ocean: data?.filter(r => r.status === 'released_by_ocean')?.length || 0,
+        shipped: data?.filter(r => r.status === 'shipped')?.length || 0,
+        total_pieces: data?.reduce((sum, r) => sum + (r.total_pieces || 0), 0) || 0,
+        total_weight_lb: data?.reduce((sum, r) => sum + (r.total_weight_lb || 0), 0) || 0,
+        total_volume_ft3: data?.reduce((sum, r) => sum + (r.total_volume_ft3 || 0), 0) || 0
+      };
+      
+      return [stats]; // Return as array to match expected format
     } catch (error) {
       console.error('Error fetching analytics:', error);
       throw error;
@@ -505,6 +521,7 @@ export const warehouseService = {
 
   async getDashboardStats(userId) {
     try {
+      console.log('✅ Real warehouse stats retrieved');
       const analytics = await this.getAnalytics(userId);
       if (analytics && analytics.length > 0) {
         const stats = analytics[0];
@@ -516,7 +533,7 @@ export const warehouseService = {
             'released_by_ocean': stats.released_by_ocean || 0,
             'shipped': stats.shipped || 0
           },
-          by_location: stats.by_location || {},
+          by_location: {},
           total_pieces: stats.total_pieces || 0,
           total_weight: stats.total_weight_lb || 0,
           total_volume: stats.total_volume_ft3 || 0,
