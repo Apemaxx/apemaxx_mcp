@@ -29,21 +29,36 @@ export const warehouseService = {
   // Fallback receipts from base table
   async getFallbackReceipts(userId, limit = 10) {
     try {
-      const { data, error } = await supabase
+      // Get user's organization info for filtering
+      const { data: profile } = await supabase
+        .from('profiles')
+        .select('organization_id')
+        .eq('id', userId)
+        .single();
+
+      let query = supabase
         .from('warehouse_receipts')
         .select('*')
-        .eq('user_id', userId)
         .order('received_date', { ascending: false })
         .limit(limit);
 
+      // Filter by user_id OR organization_id if available
+      if (profile?.organization_id) {
+        query = query.or(`user_id.eq.${userId},organization_id.eq.${profile.organization_id}`);
+      } else {
+        query = query.eq('user_id', userId);
+      }
+
+      const { data, error } = await query;
+
       if (error) throw error;
 
-      // Add derived fields to match summary view structure
+      // Structure data with WR number as primary identifier
       return data?.map(receipt => ({
         ...receipt,
-        receipt_number: receipt.tracking_number || `WR-${receipt.id}`,
-        attachment_count: 0, // Will be updated when attachments are implemented
-        status: receipt.status || 'received'
+        receipt_number: receipt.wr_number || `WR-${receipt.id}`,
+        attachment_count: 0,
+        status: receipt.status || 'Received on Hand'
       })) || [];
     } catch (error) {
       console.error('Fallback receipts query failed:', error);
@@ -106,6 +121,9 @@ export const warehouseService = {
         .single();
 
       if (error) throw error;
+
+      // Auto-populate address book if shipper/consignee don't exist
+      await this.updateAddressBookFromReceipt(receipt, receiptData);
 
       // Upload files if provided
       if (files.length > 0) {
@@ -347,6 +365,65 @@ export const warehouseService = {
     } catch (error) {
       console.error('Get address book entry failed:', error);
       return null;
+    }
+  },
+
+  // Auto-populate address book from receipt data
+  async updateAddressBookFromReceipt(receipt, receiptData) {
+    try {
+      const userId = receiptData.user_id;
+      
+      // If shipper_id or consignee_id are not set, create address book entries
+      if (!receiptData.shipper_id && receiptData.shipper_name) {
+        const shipperEntry = {
+          user_id: userId,
+          company_name: receiptData.shipper_name,
+          address_line_1: receiptData.shipper_address || '',
+          type: 'shipper',
+          created_at: new Date().toISOString()
+        };
+        
+        const { data: newShipper } = await supabase
+          .from('address_book')
+          .insert([shipperEntry])
+          .select()
+          .single();
+          
+        if (newShipper) {
+          // Update the receipt with the new shipper_id
+          await supabase
+            .from('warehouse_receipts')
+            .update({ shipper_id: newShipper.id })
+            .eq('id', receipt.id);
+        }
+      }
+
+      if (!receiptData.consignee_id && receiptData.consignee_name) {
+        const consigneeEntry = {
+          user_id: userId,
+          company_name: receiptData.consignee_name,
+          address_line_1: receiptData.consignee_address || '',
+          type: 'consignee',
+          created_at: new Date().toISOString()
+        };
+        
+        const { data: newConsignee } = await supabase
+          .from('address_book')
+          .insert([consigneeEntry])
+          .select()
+          .single();
+          
+        if (newConsignee) {
+          // Update the receipt with the new consignee_id
+          await supabase
+            .from('warehouse_receipts')
+            .update({ consignee_id: newConsignee.id })
+            .eq('id', receipt.id);
+        }
+      }
+    } catch (error) {
+      console.warn('Could not auto-populate address book:', error);
+      // Non-critical error, continue with receipt creation
     }
   }
 };

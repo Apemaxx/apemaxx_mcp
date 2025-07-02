@@ -106,7 +106,11 @@ const WarehouseReceiptManager = ({ userId }) => {
       carrier_name: '',
       driver_name: '',
       shipper_id: '',
+      shipper_name: '',
+      shipper_address: '',
       consignee_id: '',
+      consignee_name: '',
+      consignee_address: '',
       total_pieces: 0,
       total_weight_lbs: 0,
       total_volume_cbf: 0,
@@ -120,6 +124,8 @@ const WarehouseReceiptManager = ({ userId }) => {
     const [addressBook, setAddressBook] = useState([]);
     const [selectedShipper, setSelectedShipper] = useState(null);
     const [selectedConsignee, setSelectedConsignee] = useState(null);
+    const [manualShipper, setManualShipper] = useState(false);
+    const [manualConsignee, setManualConsignee] = useState(false);
 
     // Load address book when modal opens
     useEffect(() => {
@@ -138,22 +144,36 @@ const WarehouseReceiptManager = ({ userId }) => {
     }, [userId]);
 
     const handleShipperChange = async (shipperId) => {
-      setFormData({...formData, shipper_id: shipperId});
-      if (shipperId) {
-        const shipperData = await warehouseService.getAddressBookEntry(shipperId);
-        setSelectedShipper(shipperData);
-      } else {
+      if (shipperId === 'manual') {
+        setManualShipper(true);
+        setFormData({...formData, shipper_id: '', shipper_name: '', shipper_address: ''});
         setSelectedShipper(null);
+      } else {
+        setManualShipper(false);
+        setFormData({...formData, shipper_id: shipperId});
+        if (shipperId) {
+          const shipperData = await warehouseService.getAddressBookEntry(shipperId);
+          setSelectedShipper(shipperData);
+        } else {
+          setSelectedShipper(null);
+        }
       }
     };
 
     const handleConsigneeChange = async (consigneeId) => {
-      setFormData({...formData, consignee_id: consigneeId});
-      if (consigneeId) {
-        const consigneeData = await warehouseService.getAddressBookEntry(consigneeId);
-        setSelectedConsignee(consigneeData);
-      } else {
+      if (consigneeId === 'manual') {
+        setManualConsignee(true);
+        setFormData({...formData, consignee_id: '', consignee_name: '', consignee_address: ''});
         setSelectedConsignee(null);
+      } else {
+        setManualConsignee(false);
+        setFormData({...formData, consignee_id: consigneeId});
+        if (consigneeId) {
+          const consigneeData = await warehouseService.getAddressBookEntry(consigneeId);
+          setSelectedConsignee(consigneeData);
+        } else {
+          setSelectedConsignee(null);
+        }
       }
     };
 
@@ -176,7 +196,11 @@ const WarehouseReceiptManager = ({ userId }) => {
           carrier_name: '',
           driver_name: '',
           shipper_id: '',
+          shipper_name: '',
+          shipper_address: '',
           consignee_id: '',
+          consignee_name: '',
+          consignee_address: '',
           total_pieces: 0,
           total_weight_lbs: 0,
           total_volume_cbf: 0,
@@ -188,6 +212,8 @@ const WarehouseReceiptManager = ({ userId }) => {
         setFiles([]);
         setSelectedShipper(null);
         setSelectedConsignee(null);
+        setManualShipper(false);
+        setManualConsignee(false);
       } catch (error) {
         console.error('Error creating receipt:', error);
         alert('Error creating receipt: ' + error.message);
@@ -272,13 +298,31 @@ const WarehouseReceiptManager = ({ userId }) => {
                     className="w-full border border-gray-300 rounded-md px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
                   >
                     <option value="">Select Shipper</option>
+                    <option value="manual">➕ Add Entry Manual</option>
                     {addressBook.map((entry) => (
                       <option key={entry.id} value={entry.id}>
-                        {entry.company_name} - {entry.contact_name}
+                        {entry.company_name}
                       </option>
                     ))}
                   </select>
-                  {selectedShipper && (
+                  {manualShipper ? (
+                    <div className="space-y-2">
+                      <input
+                        type="text"
+                        placeholder="Shipper Company Name"
+                        value={formData.shipper_name}
+                        onChange={(e) => setFormData({...formData, shipper_name: e.target.value})}
+                        className="w-full border border-gray-300 rounded-md px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                      />
+                      <textarea
+                        placeholder="Shipper Address"
+                        value={formData.shipper_address}
+                        onChange={(e) => setFormData({...formData, shipper_address: e.target.value})}
+                        className="w-full border border-gray-300 rounded-md px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                        rows={3}
+                      />
+                    </div>
+                  ) : selectedShipper && (
                     <div className="text-xs text-gray-600 p-2 bg-gray-50 rounded">
                       <div><strong>{selectedShipper.company_name}</strong></div>
                       <div>{selectedShipper.address_line_1}</div>
@@ -298,13 +342,31 @@ const WarehouseReceiptManager = ({ userId }) => {
                     className="w-full border border-gray-300 rounded-md px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
                   >
                     <option value="">Select Consignee</option>
+                    <option value="manual">➕ Add Entry Manual</option>
                     {addressBook.map((entry) => (
                       <option key={entry.id} value={entry.id}>
-                        {entry.company_name} - {entry.contact_name}
+                        {entry.company_name}
                       </option>
                     ))}
                   </select>
-                  {selectedConsignee && (
+                  {manualConsignee ? (
+                    <div className="space-y-2">
+                      <input
+                        type="text"
+                        placeholder="Consignee Company Name"
+                        value={formData.consignee_name}
+                        onChange={(e) => setFormData({...formData, consignee_name: e.target.value})}
+                        className="w-full border border-gray-300 rounded-md px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                      />
+                      <textarea
+                        placeholder="Consignee Address"
+                        value={formData.consignee_address}
+                        onChange={(e) => setFormData({...formData, consignee_address: e.target.value})}
+                        className="w-full border border-gray-300 rounded-md px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                        rows={3}
+                      />
+                    </div>
+                  ) : selectedConsignee && (
                     <div className="text-xs text-gray-600 p-2 bg-gray-50 rounded">
                       <div><strong>{selectedConsignee.company_name}</strong></div>
                       <div>{selectedConsignee.address_line_1}</div>
