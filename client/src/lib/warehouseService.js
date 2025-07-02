@@ -1,505 +1,581 @@
-// client/src/lib/warehouseService.js - Enhanced Version
+// client/src/lib/warehouseService.js
 import { supabase } from './supabase';
 
 export const warehouseService = {
-  // Warehouse receipt statuses
-  STATUSES: {
-    RECEIVED_ON_HAND: 'received_on_hand',
-    RELEASED_BY_AIR: 'released_by_air', 
-    RELEASED_BY_OCEAN: 'released_by_ocean',
-    SHIPPED: 'shipped'
-  },
+  // ==================== WAREHOUSE RECEIPTS ====================
 
-  // Get warehouse receipts from backend API
-  async getReceipts(userId, limit = 20, locationId = null, status = null) {
+  async getReceipts(userId, options = {}) {
     try {
-      const params = new URLSearchParams();
-      if (limit) params.append('limit', limit.toString());
-      if (locationId) params.append('location', locationId);
-      if (status) params.append('status', status);
-      
-      const response = await fetch(`/api/warehouse/receipts?${params.toString()}`, {
-        headers: {
-          'Authorization': `Bearer ${localStorage.getItem('token')}`,
-          'Content-Type': 'application/json'
-        }
-      });
-      
-      if (response.ok) {
-        const receipts = await response.json();
-        console.log('✅ Real warehouse receipts retrieved:', receipts.length);
-        return receipts;
-      } else {
-        console.warn('⚠️ API request failed, using fallback data');
-        return await this.getReceiptsFallback(userId, limit, locationId, status);
+      let query = supabase
+        .from('warehouse_receipt_summary_enhanced')
+        .select('*')
+        .eq('user_id', userId)
+        .order('received_date', { ascending: false });
+
+      // Apply filters
+      if (options.status && options.status !== 'all') {
+        query = query.eq('status', options.status);
       }
+
+      if (options.search) {
+        query = query.or(`
+          receipt_number.ilike.%${options.search}%,
+          tracking_number.ilike.%${options.search}%,
+          shipper_name.ilike.%${options.search}%,
+          consignee_name.ilike.%${options.search}%,
+          carrier_name.ilike.%${options.search}%,
+          pro_number.ilike.%${options.search}%
+        `);
+      }
+
+      if (options.location && options.location !== 'all') {
+        query = query.eq('warehouse_location_name', options.location);
+      }
+
+      // Pagination
+      if (options.limit) {
+        query = query.limit(options.limit);
+      }
+
+      if (options.offset) {
+        query = query.range(options.offset, options.offset + (options.limit || 50) - 1);
+      }
+
+      const { data, error } = await query;
+
+      if (error) throw error;
+      return data || [];
     } catch (error) {
-      console.error('❌ Error fetching receipts from API:', error);
-      return await this.getReceiptsFallback(userId, limit, locationId, status);
+      console.error('Error fetching receipts:', error);
+      throw error;
     }
   },
 
-  // Fallback method using base table
-  async getReceiptsFallback(userId, limit = 20, locationId = null, status = null) {
-    // Return sample data for demonstration
-    const sampleReceipts = [
-      {
-        id: 'wr_001',
-        wr_number: 'WR23303001',
-        receipt_number: 'WR23303001',
-        tracking_number: 'AWB-789456123',
-        status: 'received_on_hand',
-        received_date: '2025-01-28T10:30:00Z',
-        shipper_name: 'INTCOMEX',
-        shipper_address: '3505 NW 107th Ave',
-        shipper_city: 'Miami',
-        shipper_state: 'FL',
-        shipper_postal: '33178',
-        shipper_phone: '+1-305-477-6000',
-        consignee_name: 'AMAZON LOGISTICS',
-        consignee_address: '410 Terry Ave N',
-        consignee_city: 'Seattle',
-        consignee_state: 'WA',
-        consignee_postal: '98109',
-        consignee_phone: '+1-206-266-1000',
-        warehouse_location_name: 'JFK International Airport',
-        warehouse_location_code: 'JFK',
-        total_pieces: 8,
-        total_weight_lb: 850,
-        total_volume_ft3: 65,
-        attachment_count: 2,
-        carrier_name: 'AMERICAN AIRLINES',
-        driver_name: 'John Smith',
-        cargo_description: 'ELECTRONIC COMPONENTS'
-      },
-      {
-        id: 'wr_002',
-        wr_number: 'WR23303002',
-        receipt_number: 'WR23303002',
-        tracking_number: 'AWB-789456124',
-        status: 'received_on_hand',
-        received_date: '2025-01-28T14:15:00Z',
-        shipper_name: 'GLASDON INC',
-        shipper_address: '2525 Adie Rd',
-        shipper_city: 'Maryland Heights',
-        shipper_state: 'MO',
-        shipper_postal: '63043',
-        shipper_phone: '+1-314-291-9000',
-        consignee_name: 'HOME DEPOT',
-        consignee_address: '2455 Paces Ferry Rd',
-        consignee_city: 'Atlanta',
-        consignee_state: 'GA',
-        consignee_postal: '30339',
-        consignee_phone: '+1-770-433-8211',
-        warehouse_location_name: 'JFK International Airport',
-        warehouse_location_code: 'JFK',
-        total_pieces: 12,
-        total_weight_lb: 1200,
-        total_volume_ft3: 95,
-        attachment_count: 3,
-        carrier_name: 'UNITED CARGO',
-        driver_name: 'Maria Garcia',
-        cargo_description: 'OUTDOOR FURNITURE'
-      },
-      {
-        id: 'wr_003',
-        wr_number: 'WR23303003',
-        receipt_number: 'WR23303003',
-        tracking_number: 'AWB-789456125',
-        status: 'received_on_hand',
-        received_date: '2025-01-29T09:45:00Z',
-        shipper_name: 'TECH SOLUTIONS LLC',
-        shipper_address: '1500 Technology Dr',
-        shipper_city: 'Austin',
-        shipper_state: 'TX',
-        shipper_postal: '78744',
-        shipper_phone: '+1-512-555-0123',
-        consignee_name: 'BEST BUY',
-        consignee_address: '7601 Penn Ave S',
-        consignee_city: 'Richfield',
-        consignee_state: 'MN',
-        consignee_postal: '55423',
-        consignee_phone: '+1-612-291-1000',
-        warehouse_location_name: 'JFK International Airport',
-        warehouse_location_code: 'JFK',
-        total_pieces: 5,
-        total_weight_lb: 400,
-        total_volume_ft3: 25,
-        attachment_count: 1,
-        carrier_name: 'DELTA CARGO',
-        driver_name: 'Robert Johnson',
-        cargo_description: 'COMPUTER EQUIPMENT'
-      }
-    ];
-
-    return sampleReceipts.slice(0, limit);
-  },
-
-  // Get receipts by location from backend API
-  async getReceiptsByLocation(userId) {
+  async getReceiptById(receiptId, userId) {
     try {
-      const response = await fetch('/api/warehouse/receipts/by-location', {
-        headers: {
-          'Authorization': `Bearer ${localStorage.getItem('token')}`,
-          'Content-Type': 'application/json'
-        }
-      });
+      const { data, error } = await supabase
+        .from('warehouse_receipt_summary_enhanced')
+        .select('*')
+        .eq('id', receiptId)
+        .eq('user_id', userId)
+        .single();
 
-      if (response.ok) {
-        const groupedReceipts = await response.json();
-        console.log('✅ Real warehouse receipts by location retrieved');
-        return groupedReceipts;
-      } else {
-        console.warn('⚠️ By-location API request failed, using fallback data');
-        const receipts = await this.getReceipts(userId, 100);
-        return { 'JFK International Airport': receipts };
-      }
+      if (error) throw error;
+      return data;
     } catch (error) {
-      console.error('❌ Error fetching receipts by location from API:', error);
-      const receipts = await this.getReceipts(userId, 100);
-      return { 'JFK International Airport': receipts };
+      console.error('Error fetching receipt:', error);
+      throw error;
     }
   },
 
-  // Get enhanced analytics
-  // Get dashboard statistics from backend API
-  async getDashboardStats(userId) {
+  async createReceipt(receiptData) {
     try {
-      const response = await fetch('/api/warehouse/stats', {
-        headers: {
-          'Authorization': `Bearer ${localStorage.getItem('token')}`,
-          'Content-Type': 'application/json'
-        }
-      });
-
-      if (response.ok) {
-        const stats = await response.json();
-        console.log('✅ Real warehouse stats retrieved');
-        return stats;
-      } else {
-        console.warn('⚠️ Stats API request failed, using fallback data');
-        return await this.getFallbackStats(userId);
-      }
-    } catch (error) {
-      console.error('❌ Error fetching stats from API:', error);
-      return await this.getFallbackStats(userId);
-    }
-  },
-
-  // Fallback stats calculation
-  async getFallbackStats(userId) {
-    // Return sample data for demonstration
-    const stats = {
-      total_receipts: 3,
-      by_status: {
-        'received_on_hand': 3,
-        'released_by_air': 0,
-        'released_by_ocean': 0,
-        'shipped': 0
-      },
-      by_location: {
-        'JFK International Airport': 3
-      },
-      total_pieces: 25,
-      total_weight: 2450,
-      total_volume: 185,
-      recent_activity: []
-    };
-
-    return stats;
-  },
-
-  // Get single receipt with attachments
-  async getReceiptById(receiptId) {
-    const { data: receipt, error: receiptError } = await supabase
-      .from('warehouse_receipts')
-      .select(`
-        *,
-        shipper:address_book!shipper_id(*),
-        consignee:address_book!consignee_id(*),
-        warehouse_location:warehouses!warehouse_location_id(*)
-      `)
-      .eq('id', receiptId)
-      .single();
-
-    if (receiptError) throw receiptError;
-
-    // Get attachments
-    const { data: attachments, error: attachError } = await supabase
-      .from('warehouse_receipt_attachments')
-      .select('*')
-      .eq('warehouse_receipt_id', receiptId);
-
-    if (attachError) throw attachError;
-
-    return { ...receipt, attachments };
-  },
-
-  // Create enhanced warehouse receipt
-  async createReceipt(receiptData, files = []) {
-    try {
-      // Calculate volume if dimensions provided
-      let volumeFt3 = receiptData.total_volume_ft3;
-      if (!volumeFt3 && receiptData.dimensions_length && receiptData.dimensions_width && receiptData.dimensions_height) {
-        volumeFt3 = (receiptData.dimensions_length * receiptData.dimensions_width * receiptData.dimensions_height) / 1728; // Convert cubic inches to cubic feet
-      }
-
-      // Calculate volumetric weight (VLB)
-      let volumeVlb = receiptData.total_volume_vlb;
-      if (!volumeVlb && volumeFt3) {
-        volumeVlb = volumeFt3 * 10.4; // Standard VLB calculation
-      }
-
-      // Generate unique receipt number
-      const receiptNumber = `WR${Date.now().toString().slice(-8)}`;
+      // Generate WR number
+      const wrNumber = await this.generateWRNumber();
       
-      // Prepare data for insertion
-      const insertData = {
-        wr_number: receiptNumber,
-        received_date: new Date().toISOString(),
-        received_by: receiptData.received_by,
-        tracking_number: receiptData.tracking_number,
-        pro_number: receiptData.pro_number,
-        booking_reference: receiptData.booking_reference,
-        shipment_id: receiptData.shipment_id,
-        carrier_name: receiptData.carrier_name,
-        driver_name: receiptData.driver_name,
-        total_pieces: receiptData.total_pieces,
-        total_weight_lb: receiptData.total_weight_lb,
-        total_volume_ft3: volumeFt3,
-        total_volume_vlb: volumeVlb,
-        dimensions_length: receiptData.dimensions_length,
-        dimensions_width: receiptData.dimensions_width,
-        dimensions_height: receiptData.dimensions_height,
-        package_type: receiptData.package_type,
-        cargo_description: receiptData.cargo_description || 'GENERAL CARGO',
-        shipper_id: receiptData.shipper_id,
-        consignee_id: receiptData.consignee_id,
-        warehouse_location_id: receiptData.warehouse_location_id,
-        status: receiptData.status || this.STATUSES.RECEIVED_ON_HAND,
+      const receiptToInsert = {
+        wr_number: wrNumber,
+        received_date: receiptData.receivedDate || new Date().toISOString(),
+        received_by: receiptData.receivedBy,
+        shipper_name: receiptData.shipperName,
+        shipper_address: receiptData.shipperAddress,
+        consignee_name: receiptData.consigneeName,
+        consignee_address: receiptData.consigneeAddress,
+        carrier_name: receiptData.carrierName,
+        driver_name: receiptData.driverName,
+        driver_license: receiptData.driverLicense,
+        tracking_number: receiptData.trackingNumber,
+        pro_number: receiptData.proNumber,
+        booking_reference: receiptData.bookingReference,
+        shipment_id: receiptData.shipmentId,
+        invoice_number: receiptData.invoiceNumber,
+        po_number: receiptData.poNumber,
+        total_pieces: receiptData.totalPieces,
+        total_weight_lb: receiptData.totalWeightLb,
+        total_weight_kg: receiptData.totalWeightKg,
+        cargo_description: receiptData.cargoDescription || 'GENERAL CARGO',
         notes: receiptData.notes,
-        user_id: receiptData.user_id
+        status: receiptData.status || 'received_on_hand',
+        user_id: receiptData.userId,
+        shipper_id: receiptData.shipperId,
+        consignee_id: receiptData.consigneeId,
+        warehouse_location_id: receiptData.warehouseLocationId,
+        consol_week_plan_id: receiptData.consolWeekPlanId,
+        dimensions_length: receiptData.dimensionsLength,
+        dimensions_width: receiptData.dimensionsWidth,
+        dimensions_height: receiptData.dimensionsHeight,
+        package_type: receiptData.packageType,
+        charges_applied: receiptData.chargesApplied || 0
       };
 
-      // Create receipt record
-      const { data: receipt, error } = await supabase
+      // Calculate volume if dimensions provided
+      if (receiptData.dimensionsLength && receiptData.dimensionsWidth && receiptData.dimensionsHeight) {
+        const volumeFt3 = (receiptData.dimensionsLength * receiptData.dimensionsWidth * receiptData.dimensionsHeight) / 1728;
+        receiptToInsert.total_volume_ft3 = volumeFt3;
+        receiptToInsert.total_volume_vlb = volumeFt3 * 10.4; // VLB calculation
+      }
+
+      const { data, error } = await supabase
         .from('warehouse_receipts')
-        .insert([insertData])
+        .insert(receiptToInsert)
         .select()
         .single();
 
       if (error) throw error;
-
-      // Upload files if provided
-      if (files.length > 0) {
-        await this.uploadFiles(files, receipt.id);
-      }
-
-      return receipt;
+      return data;
     } catch (error) {
       console.error('Error creating receipt:', error);
       throw error;
     }
   },
 
-  // Update receipt status
-  async updateStatus(receiptId, status, notes = '') {
-    const { data, error } = await supabase
-      .from('warehouse_receipts')
-      .update({ 
-        status,
-        notes: notes || undefined,
-        updated_at: new Date().toISOString()
-      })
-      .eq('id', receiptId)
-      .select()
-      .single();
+  async updateReceipt(receiptId, updates, userId) {
+    try {
+      // Calculate volume if dimensions updated
+      if (updates.dimensionsLength && updates.dimensionsWidth && updates.dimensionsHeight) {
+        const volumeFt3 = (updates.dimensionsLength * updates.dimensionsWidth * updates.dimensionsHeight) / 1728;
+        updates.total_volume_ft3 = volumeFt3;
+        updates.total_volume_vlb = volumeFt3 * 10.4;
+      }
 
-    if (error) throw error;
-    return data;
-  },
+      updates.updated_at = new Date().toISOString();
 
-  // Address book integration
-  async getAddressBook(userId, type = 'all') {
-    let query = supabase
-      .from('address_book')
-      .select('*')
-      .eq('user_id', userId)
-      .eq('is_active', true)
-      .order('company_name');
-
-    if (type !== 'all') {
-      query = query.eq('business_type', type);
-    }
-
-    const { data, error } = await query;
-    if (error) throw error;
-    return data;
-  },
-
-  // Create address book entry
-  async createAddressBookEntry(addressData) {
-    const { data, error } = await supabase
-      .from('address_book')
-      .insert([addressData])
-      .select()
-      .single();
-
-    if (error) throw error;
-    return data;
-  },
-
-  // Warehouse locations
-  async getWarehouseLocations() {
-    const { data, error } = await supabase
-      .from('warehouse_locations')
-      .select('*')
-      .eq('is_active', true)
-      .order('location_name');
-
-    if (error) throw error;
-    return data;
-  },
-
-  // Consol week plans
-  async getConsolWeekPlans(userId) {
-    const { data, error } = await supabase
-      .from('consol_week_plans')
-      .select('*')
-      .eq('created_by', userId)
-      .order('year', { ascending: false })
-      .order('week_number', { ascending: false });
-
-    if (error) throw error;
-    return data;
-  },
-
-  async createConsolWeekPlan(planData) {
-    const { data, error } = await supabase
-      .from('consol_week_plans')
-      .insert([planData])
-      .select()
-      .single();
-
-    if (error) throw error;
-    return data;
-  },
-
-  async addToConsolPlan(receiptId, consolPlanId) {
-    const { data, error } = await supabase
-      .from('warehouse_receipts')
-      .update({ consol_week_plan_id: consolPlanId })
-      .eq('id', receiptId)
-      .select()
-      .single();
-
-    if (error) throw error;
-    return data;
-  },
-
-  // File upload functionality
-  async uploadFiles(files, receiptId) {
-    const uploadPromises = Array.from(files).map(async (file) => {
-      const fileExt = file.name.split('.').pop();
-      const fileName = `${receiptId}/${Date.now()}.${fileExt}`;
-      
-      // Upload to storage
-      const { data: uploadData, error: uploadError } = await supabase.storage
-        .from('warehouse-receipts')
-        .upload(fileName, file);
-
-      if (uploadError) throw uploadError;
-
-      // Get public URL
-      const { data: { publicUrl } } = supabase.storage
-        .from('warehouse-receipts')
-        .getPublicUrl(fileName);
-
-      // Save attachment record
-      const { data: attachment, error: attachError } = await supabase
-        .from('warehouse_receipt_attachments')
-        .insert([{
-          warehouse_receipt_id: receiptId,
-          file_name: file.name,
-          file_path: uploadData.path,
-          file_type: fileExt,
-          file_size: file.size,
-          mime_type: file.type,
-          uploaded_by: (await supabase.auth.getUser()).data.user?.id
-        }])
+      const { data, error } = await supabase
+        .from('warehouse_receipts')
+        .update(updates)
+        .eq('id', receiptId)
+        .eq('user_id', userId)
         .select()
         .single();
 
-      if (attachError) throw attachError;
-
-      return {
-        ...attachment,
-        url: publicUrl
-      };
-    });
-
-    return Promise.all(uploadPromises);
-  },
-
-  // Search functionality
-  // Search receipts using backend API
-  async searchReceipts(userId, searchTerm) {
-    try {
-      const response = await fetch(`/api/warehouse/receipts/search?q=${encodeURIComponent(searchTerm)}`, {
-        headers: {
-          'Authorization': `Bearer ${localStorage.getItem('token')}`,
-          'Content-Type': 'application/json'
-        }
-      });
-
-      if (response.ok) {
-        const results = await response.json();
-        console.log('✅ Real warehouse search results retrieved:', results.length);
-        return results;
-      } else {
-        console.warn('⚠️ Search API request failed, using client-side search');
-        const receipts = await this.getReceipts(userId, 100);
-        return receipts.filter(receipt => 
-          receipt.receipt_number?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-          receipt.tracking_number?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-          receipt.shipper_name?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-          receipt.consignee_name?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-          receipt.carrier_name?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-          receipt.pro_number?.toLowerCase().includes(searchTerm.toLowerCase())
-        );
-      }
+      if (error) throw error;
+      return data;
     } catch (error) {
-      console.error('❌ Error searching from API:', error);
-      const receipts = await this.getReceipts(userId, 100);
-      return receipts.filter(receipt => 
-        receipt.receipt_number?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        receipt.tracking_number?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        receipt.shipper_name?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        receipt.consignee_name?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        receipt.carrier_name?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        receipt.pro_number?.toLowerCase().includes(searchTerm.toLowerCase())
-      );
+      console.error('Error updating receipt:', error);
+      throw error;
     }
   },
 
-  // Utility functions
-  formatStatus(status) {
-    const statusMap = {
+  async updateStatus(receiptId, newStatus, userId) {
+    try {
+      const { data, error } = await supabase
+        .from('warehouse_receipts')
+        .update({ 
+          status: newStatus,
+          updated_at: new Date().toISOString()
+        })
+        .eq('id', receiptId)
+        .eq('user_id', userId)
+        .select()
+        .single();
+
+      if (error) throw error;
+      return data;
+    } catch (error) {
+      console.error('Error updating status:', error);
+      throw error;
+    }
+  },
+
+  async deleteReceipt(receiptId, userId) {
+    try {
+      // First delete attachments
+      await this.deleteReceiptAttachments(receiptId);
+      
+      // Then delete the receipt
+      const { error } = await supabase
+        .from('warehouse_receipts')
+        .delete()
+        .eq('id', receiptId)
+        .eq('user_id', userId);
+
+      if (error) throw error;
+      return true;
+    } catch (error) {
+      console.error('Error deleting receipt:', error);
+      throw error;
+    }
+  },
+
+  async generateWRNumber() {
+    try {
+      const now = new Date();
+      const year = now.getFullYear().toString().substr(-2);
+      const dayOfYear = Math.floor((now - new Date(now.getFullYear(), 0, 0)) / 1000 / 60 / 60 / 24);
+      
+      // Get count of receipts today to create unique number
+      const { count } = await supabase
+        .from('warehouse_receipts')
+        .select('id', { count: 'exact' })
+        .gte('created_at', new Date().toISOString().split('T')[0]);
+
+      const sequence = (count + 1).toString().padStart(3, '0');
+      return `WR${year}${dayOfYear}${sequence}`;
+    } catch (error) {
+      console.error('Error generating WR number:', error);
+      return `WR${Date.now()}`;
+    }
+  },
+
+  // ==================== ANALYTICS ====================
+
+  async getAnalytics(userId) {
+    try {
+      const { data, error } = await supabase
+        .rpc('get_warehouse_analytics_enhanced', { user_uuid: userId });
+
+      if (error) throw error;
+      return data;
+    } catch (error) {
+      console.error('Error fetching analytics:', error);
+      throw error;
+    }
+  },
+
+  // ==================== ADDRESS BOOK ====================
+
+  async getAddressBook(userId, businessType = null) {
+    try {
+      let query = supabase
+        .from('address_book')
+        .select('*')
+        .eq('user_id', userId)
+        .order('company_name');
+
+      if (businessType) {
+        query = query.eq('business_type', businessType);
+      }
+
+      const { data, error } = await query;
+      if (error) throw error;
+      return data || [];
+    } catch (error) {
+      console.error('Error fetching address book:', error);
+      throw error;
+    }
+  },
+
+  async createAddressBookEntry(entryData) {
+    try {
+      const { data, error } = await supabase
+        .from('address_book')
+        .insert(entryData)
+        .select()
+        .single();
+
+      if (error) throw error;
+      return data;
+    } catch (error) {
+      console.error('Error creating address book entry:', error);
+      throw error;
+    }
+  },
+
+  async updateAddressBookEntry(entryId, updates, userId) {
+    try {
+      const { data, error } = await supabase
+        .from('address_book')
+        .update(updates)
+        .eq('id', entryId)
+        .eq('user_id', userId)
+        .select()
+        .single();
+
+      if (error) throw error;
+      return data;
+    } catch (error) {
+      console.error('Error updating address book entry:', error);
+      throw error;
+    }
+  },
+
+  async deleteAddressBookEntry(entryId, userId) {
+    try {
+      const { error } = await supabase
+        .from('address_book')
+        .delete()
+        .eq('id', entryId)
+        .eq('user_id', userId);
+
+      if (error) throw error;
+      return true;
+    } catch (error) {
+      console.error('Error deleting address book entry:', error);
+      throw error;
+    }
+  },
+
+  // ==================== WAREHOUSE LOCATIONS ====================
+
+  async getWarehouseLocations() {
+    try {
+      const { data, error } = await supabase
+        .from('warehouse_locations')
+        .select('*')
+        .eq('is_active', true)
+        .order('location_name');
+
+      if (error) throw error;
+      return data || [];
+    } catch (error) {
+      console.error('Error fetching warehouse locations:', error);
+      throw error;
+    }
+  },
+
+  // ==================== FILE ATTACHMENTS ====================
+
+  async uploadFile(receiptId, file, userId) {
+    try {
+      const fileExt = file.name.split('.').pop();
+      const fileName = `${receiptId}/${Date.now()}.${fileExt}`;
+      const filePath = `warehouse-docs/${userId}/${fileName}`;
+
+      const { data: uploadData, error: uploadError } = await supabase.storage
+        .from('warehouse-attachments')
+        .upload(filePath, file);
+
+      if (uploadError) throw uploadError;
+
+      // Save file reference in database
+      const { data, error } = await supabase
+        .from('warehouse_receipt_attachments')
+        .insert({
+          warehouse_receipt_id: receiptId,
+          file_name: file.name,
+          file_path: uploadData.path,
+          file_size: file.size,
+          file_type: file.type,
+          uploaded_by: userId
+        })
+        .select()
+        .single();
+
+      if (error) throw error;
+      return data;
+    } catch (error) {
+      console.error('Error uploading file:', error);
+      throw error;
+    }
+  },
+
+  async getReceiptAttachments(receiptId) {
+    try {
+      const { data, error } = await supabase
+        .from('warehouse_receipt_attachments')
+        .select('*')
+        .eq('warehouse_receipt_id', receiptId)
+        .order('created_at', { ascending: false });
+
+      if (error) throw error;
+      return data || [];
+    } catch (error) {
+      console.error('Error fetching attachments:', error);
+      throw error;
+    }
+  },
+
+  async deleteReceiptAttachments(receiptId) {
+    try {
+      // Get file paths first
+      const { data: attachments } = await supabase
+        .from('warehouse_receipt_attachments')
+        .select('file_path')
+        .eq('warehouse_receipt_id', receiptId);
+
+      // Delete files from storage
+      if (attachments && attachments.length > 0) {
+        const filePaths = attachments.map(att => att.file_path);
+        await supabase.storage
+          .from('warehouse-attachments')
+          .remove(filePaths);
+      }
+
+      // Delete database records
+      const { error } = await supabase
+        .from('warehouse_receipt_attachments')
+        .delete()
+        .eq('warehouse_receipt_id', receiptId);
+
+      if (error) throw error;
+      return true;
+    } catch (error) {
+      console.error('Error deleting attachments:', error);
+      throw error;
+    }
+  },
+
+  async getFileUrl(filePath) {
+    try {
+      const { data } = await supabase.storage
+        .from('warehouse-attachments')
+        .createSignedUrl(filePath, 3600); // 1 hour expiry
+
+      return data?.signedUrl;
+    } catch (error) {
+      console.error('Error getting file URL:', error);
+      return null;
+    }
+  },
+
+  // ==================== CONSOL WEEK PLANS ====================
+
+  async getConsolWeekPlans(userId) {
+    try {
+      const { data, error } = await supabase
+        .from('consol_week_plans')
+        .select('*')
+        .eq('created_by', userId)
+        .order('year', { ascending: false })
+        .order('week_number', { ascending: false });
+
+      if (error) throw error;
+      return data || [];
+    } catch (error) {
+      console.error('Error fetching consol week plans:', error);
+      throw error;
+    }
+  },
+
+  async createConsolWeekPlan(planData) {
+    try {
+      const { data, error } = await supabase
+        .from('consol_week_plans')
+        .insert(planData)
+        .select()
+        .single();
+
+      if (error) throw error;
+      return data;
+    } catch (error) {
+      console.error('Error creating consol week plan:', error);
+      throw error;
+    }
+  },
+
+  // ==================== UTILITY FUNCTIONS ====================
+
+  getStatusColor(status) {
+    const statusColors = {
+      'received_on_hand': 'bg-blue-100 text-blue-800',
+      'released_by_air': 'bg-purple-100 text-purple-800',
+      'released_by_ocean': 'bg-teal-100 text-teal-800',
+      'shipped': 'bg-green-100 text-green-800'
+    };
+    return statusColors[status] || 'bg-gray-100 text-gray-800';
+  },
+
+  getStatusDisplay(status) {
+    const statusDisplay = {
       'received_on_hand': 'Received On Hand',
       'released_by_air': 'Released by Air',
       'released_by_ocean': 'Released by Ocean',
       'shipped': 'Shipped'
     };
-    return statusMap[status] || status;
+    return statusDisplay[status] || status;
   },
 
-  getStatusColor(status) {
-    const colorMap = {
-      'received_on_hand': 'bg-blue-100 text-blue-800',
-      'released_by_air': 'bg-yellow-100 text-yellow-800',
-      'released_by_ocean': 'bg-purple-100 text-purple-800',
-      'shipped': 'bg-green-100 text-green-800'
+  getStatusIcon(status) {
+    const statusIcons = {
+      'received_on_hand': '📦',
+      'released_by_air': '✈️',
+      'released_by_ocean': '🚢',
+      'shipped': '🚛'
     };
-    return colorMap[status] || 'bg-gray-100 text-gray-800';
+    return statusIcons[status] || '📋';
+  },
+
+  formatVolume(volumeFt3) {
+    if (!volumeFt3) return '0.00 ft³';
+    return `${parseFloat(volumeFt3).toFixed(2)} ft³`;
+  },
+
+  formatWeight(weightLb) {
+    if (!weightLb) return '0.00 lbs';
+    return `${parseFloat(weightLb).toFixed(2)} lbs`;
+  },
+
+  formatVLB(volumeVlb) {
+    if (!volumeVlb) return '0.00 VLB';
+    return `${parseFloat(volumeVlb).toFixed(2)} VLB`;
+  },
+
+  // ==================== LEGACY COMPATIBILITY ====================
+  // These methods provide compatibility with the existing components
+
+  async getDashboardStats(userId) {
+    try {
+      const analytics = await this.getAnalytics(userId);
+      if (analytics && analytics.length > 0) {
+        const stats = analytics[0];
+        return {
+          total_receipts: stats.total_receipts || 0,
+          by_status: {
+            'received_on_hand': stats.received_on_hand || 0,
+            'released_by_air': stats.released_by_air || 0,
+            'released_by_ocean': stats.released_by_ocean || 0,
+            'shipped': stats.shipped || 0
+          },
+          by_location: stats.by_location || {},
+          total_pieces: stats.total_pieces || 0,
+          total_weight: stats.total_weight_lb || 0,
+          total_volume: stats.total_volume_ft3 || 0,
+          recent_activity: []
+        };
+      }
+      return {
+        total_receipts: 0,
+        by_status: {},
+        by_location: {},
+        total_pieces: 0,
+        total_weight: 0,
+        total_volume: 0,
+        recent_activity: []
+      };
+    } catch (error) {
+      console.error('Error fetching dashboard stats:', error);
+      return {
+        total_receipts: 0,
+        by_status: {},
+        by_location: {},
+        total_pieces: 0,
+        total_weight: 0,
+        total_volume: 0,
+        recent_activity: []
+      };
+    }
+  },
+
+  async getReceiptsByLocation(userId) {
+    try {
+      const receipts = await this.getReceipts(userId);
+      const grouped = {};
+      
+      receipts.forEach(receipt => {
+        const location = receipt.warehouse_location_name || 'Unknown Location';
+        if (!grouped[location]) {
+          grouped[location] = [];
+        }
+        grouped[location].push(receipt);
+      });
+      
+      return grouped;
+    } catch (error) {
+      console.error('Error grouping receipts by location:', error);
+      return {};
+    }
+  },
+
+  async searchReceipts(userId, searchTerm) {
+    try {
+      return await this.getReceipts(userId, { search: searchTerm });
+    } catch (error) {
+      console.error('Error searching receipts:', error);
+      return [];
+    }
+  },
+
+  formatStatus(status) {
+    return this.getStatusDisplay(status);
   }
 };
