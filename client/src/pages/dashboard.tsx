@@ -5,7 +5,7 @@ import { ConsolidationPlan } from '@/components/dashboard/consolidation-plan';
 import { AIInsights } from '@/components/dashboard/ai-insights';
 import { ChatInterface } from '@/components/dashboard/chat-interface';
 import { LiveTracking } from '@/components/dashboard/live-tracking';
-import WarehouseDashboardCard from '@/components/WarehouseDashboardCard';
+import EnhancedWarehouseDashboardCard from '@/components/EnhancedWarehouseDashboardCard';
 import { useAuth } from '@/components/auth-provider';
 import { useLocation } from 'wouter';
 
@@ -75,8 +75,8 @@ export default function Dashboard() {
           {/* Live Shipment Tracking */}
           <LiveTracking />
 
-          {/* Recent Warehouse Receipts */}
-          <WarehouseDashboardCard 
+          {/* Enhanced Warehouse Management */}
+          <EnhancedWarehouseDashboardCard 
             userId={user?.id} 
             onNavigateToFull={handleWarehouseNavigation}
           />

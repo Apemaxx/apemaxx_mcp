@@ -1,116 +1,200 @@
-// src/lib/warehouseService.js
-// Adapted to work with your existing Supabase database schema
-
-import { supabase } from './supabase'; // Your existing Supabase client
+// src/lib/warehouseService.js - Enhanced Version
+import { supabase } from './supabase';
 
 export const warehouseService = {
-  // Get warehouse receipts using the new summary view
-  async getReceipts(userId, limit = 10) {
-    try {
-      const { data, error } = await supabase
-        .from('warehouse_receipt_summary')
+  // Warehouse receipt statuses
+  STATUSES: {
+    RECEIVED_ON_HAND: 'received_on_hand',
+    RELEASED_BY_AIR: 'released_by_air', 
+    RELEASED_BY_OCEAN: 'released_by_ocean',
+    SHIPPED: 'shipped'
+  },
+
+  // Get warehouse receipts with enhanced data
+  async getReceipts(userId, limit = 20, locationId = null, status = null) {
+    let query = supabase
+      .from('warehouse_receipt_summary_enhanced')
+      .select('*')
+      .eq('user_id', userId)
+      .order('received_date', { ascending: false });
+    
+    if (limit) query = query.limit(limit);
+    if (locationId) query = query.eq('warehouse_location_id', locationId);
+    if (status) query = query.eq('status', status);
+    
+    const { data, error } = await query;
+    if (error) {
+      console.warn('Enhanced view not available, falling back to base table');
+      // Fallback to base table
+      let fallbackQuery = supabase
+        .from('warehouse_receipts')
         .select('*')
         .eq('user_id', userId)
-        .order('received_date', { ascending: false })
-        .limit(limit);
+        .order('received_date', { ascending: false });
       
+      if (limit) fallbackQuery = fallbackQuery.limit(limit);
+      if (status) fallbackQuery = fallbackQuery.eq('status', status);
+      
+      const { data: fallbackData, error: fallbackError } = await fallbackQuery;
+      if (fallbackError) throw fallbackError;
+      return fallbackData || [];
+    }
+    return data || [];
+  },
+
+  // Get receipts by location
+  async getReceiptsByLocation(userId) {
+    const { data, error } = await supabase
+      .from('warehouse_receipt_summary_enhanced')
+      .select('*')
+      .eq('user_id', userId)
+      .order('warehouse_location_name', { ascending: true })
+      .order('received_date', { ascending: false });
+    
+    if (error) {
+      // Fallback to base table
+      const { data: fallbackData, error: fallbackError } = await supabase
+        .from('warehouse_receipts')
+        .select('*')
+        .eq('user_id', userId)
+        .order('warehouse_location', { ascending: true })
+        .order('received_date', { ascending: false });
+      
+      if (fallbackError) throw fallbackError;
+      
+      const groupedByLocation = {};
+      (fallbackData || []).forEach(receipt => {
+        const location = receipt.warehouse_location || 'Unknown Location';
+        if (!groupedByLocation[location]) {
+          groupedByLocation[location] = [];
+        }
+        groupedByLocation[location].push(receipt);
+      });
+      return groupedByLocation;
+    }
+
+    // Group by location
+    const groupedByLocation = {};
+    (data || []).forEach(receipt => {
+      const location = receipt.warehouse_location_name || 'Unknown Location';
+      if (!groupedByLocation[location]) {
+        groupedByLocation[location] = [];
+      }
+      groupedByLocation[location].push(receipt);
+    });
+
+    return groupedByLocation;
+  },
+
+  // Get enhanced analytics
+  async getDashboardStats(userId) {
+    try {
+      const { data, error } = await supabase
+        .rpc('get_warehouse_analytics_enhanced', { user_uuid: userId });
+
       if (error) {
-        // If summary view doesn't exist, use base table
-        console.warn('Summary view not found, using base warehouse_receipts table');
-        return await this.getFallbackReceipts(userId, limit);
+        console.warn('Analytics function not available, using fallback');
+        return await this.getFallbackStats(userId);
       }
       return data;
     } catch (error) {
-      console.warn('Summary view query failed, using fallback');
-      return await this.getFallbackReceipts(userId, limit);
+      console.warn('Analytics function failed, using fallback');
+      return await this.getFallbackStats(userId);
     }
   },
 
-  // Fallback receipts from base table
-  async getFallbackReceipts(userId, limit = 10) {
-    try {
-      // Get user's organization info for filtering
-      const { data: profile } = await supabase
-        .from('profiles')
-        .select('organization_id')
-        .eq('id', userId)
-        .single();
-
-      let query = supabase
-        .from('warehouse_receipts')
-        .select('*')
-        .order('received_date', { ascending: false })
-        .limit(limit);
-
-      // Filter by user_id OR organization_id if available
-      if (profile?.organization_id) {
-        query = query.or(`user_id.eq.${userId},organization_id.eq.${profile.organization_id}`);
-      } else {
-        query = query.eq('user_id', userId);
-      }
-
-      const { data, error } = await query;
-
-      if (error) throw error;
-
-      // Structure data with WR number as primary identifier
-      return data?.map(receipt => ({
-        ...receipt,
-        receipt_number: receipt.wr_number || `WR-${receipt.id}`,
-        attachment_count: 0,
-        status: receipt.status || 'Received on Hand'
-      })) || [];
-    } catch (error) {
-      console.error('Fallback receipts query failed:', error);
-      return [];
-    }
-  },
-
-  // Get single receipt with attachments
-  async getReceiptById(receiptId) {
-    const { data: receipt, error: receiptError } = await supabase
+  // Fallback stats calculation
+  async getFallbackStats(userId) {
+    const { data: receipts, error } = await supabase
       .from('warehouse_receipts')
       .select('*')
-      .eq('id', receiptId)
-      .single();
+      .eq('user_id', userId);
 
-    if (receiptError) throw receiptError;
+    if (error) throw error;
 
-    // Get attachments
-    const { data: attachments, error: attachError } = await supabase
-      .from('warehouse_receipt_attachments')
-      .select('*')
-      .eq('warehouse_receipt_id', receiptId);
+    const stats = {
+      total_receipts: receipts?.length || 0,
+      by_status: {},
+      by_location: {},
+      total_pieces: 0,
+      total_weight: 0,
+      total_volume: 0,
+      recent_activity: (receipts || []).slice(0, 10)
+    };
 
-    if (attachError) throw attachError;
+    (receipts || []).forEach(receipt => {
+      // Status counts
+      const status = receipt.status || 'received_on_hand';
+      stats.by_status[status] = (stats.by_status[status] || 0) + 1;
 
-    return { ...receipt, attachments };
+      // Location counts
+      const location = receipt.warehouse_location || 'Unknown Location';
+      stats.by_location[location] = (stats.by_location[location] || 0) + 1;
+
+      // Totals
+      stats.total_pieces += receipt.total_pieces || 0;
+      stats.total_weight += parseFloat(receipt.total_weight_lb || receipt.total_weight_lbs || 0);
+      stats.total_volume += parseFloat(receipt.total_volume_ft3 || receipt.total_volume_cbf || 0);
+    });
+
+    return stats;
   },
 
-  // Create new warehouse receipt
+  // Create enhanced warehouse receipt
   async createReceipt(receiptData, files = []) {
     try {
-      // Use WR number from PDF data or generate if not provided
-      const receiptNumber = receiptData.wr_number || `WR${Date.now()}`;
+      // Calculate volume if dimensions provided
+      let volumeFt3 = receiptData.total_volume_ft3 || receiptData.total_volume_cbf;
+      if (!volumeFt3 && receiptData.dimensions_length && receiptData.dimensions_width && receiptData.dimensions_height) {
+        volumeFt3 = (receiptData.dimensions_length * receiptData.dimensions_width * receiptData.dimensions_height) / 1728; // Convert cubic inches to cubic feet
+      }
+
+      // Calculate volumetric weight (VLB)
+      let volumeVlb = receiptData.total_volume_vlb;
+      if (!volumeVlb && volumeFt3) {
+        volumeVlb = volumeFt3 * 10.4; // Standard VLB calculation
+      }
+
+      // Use provided WR number or generate unique one
+      const receiptNumber = receiptData.wr_number || `WR${Date.now().toString().slice(-8)}`;
       
-      // Prepare data for insertion (match your table structure)
+      // Prepare data for insertion
       const insertData = {
         wr_number: receiptNumber,
-        received_date: new Date().toISOString(),
+        receipt_number: receiptNumber, // Compatibility
+        received_date: receiptData.received_date || new Date().toISOString(),
         received_by: receiptData.received_by,
-        shipper_id: receiptData.shipper_id || null,
-        consignee_id: receiptData.consignee_id || null,
+        tracking_number: receiptData.tracking_number,
+        pro_number: receiptData.pro_number,
+        booking_reference: receiptData.booking_reference,
+        shipment_id: receiptData.shipment_id,
         carrier_name: receiptData.carrier_name,
         driver_name: receiptData.driver_name,
-        tracking_number: receiptData.tracking_number,
-        total_pieces: receiptData.total_pieces,
-        total_weight_lb: receiptData.total_weight_lbs,
-        total_volume_cbf: receiptData.total_volume_cbf,
+        total_pieces: receiptData.total_pieces || 1,
+        total_weight_lb: receiptData.total_weight_lb || receiptData.total_weight_lbs || 0,
+        total_weight_lbs: receiptData.total_weight_lbs || receiptData.total_weight_lb || 0,
+        total_volume_ft3: volumeFt3 || 0,
+        total_volume_cbf: volumeFt3 || 0, // Compatibility
+        total_volume_vlb: volumeVlb,
+        dimensions_length: receiptData.dimensions_length,
+        dimensions_width: receiptData.dimensions_width,
+        dimensions_height: receiptData.dimensions_height,
+        package_type: receiptData.package_type,
         cargo_description: receiptData.cargo_description || 'GENERAL CARGO',
+        shipper_name: receiptData.shipper_name,
+        shipper_address: receiptData.shipper_address,
+        shipper_id: receiptData.shipper_id,
+        consignee_name: receiptData.consignee_name,
+        consignee_address: receiptData.consignee_address,
+        consignee_id: receiptData.consignee_id,
         warehouse_location: receiptData.warehouse_location,
+        warehouse_location_id: receiptData.warehouse_location_id,
+        status: receiptData.status || this.STATUSES.RECEIVED_ON_HAND,
         notes: receiptData.notes,
         user_id: receiptData.user_id,
-        status: 'Received on Hand'
+        organization_id: receiptData.organization_id,
+        created_at: new Date().toISOString(),
+        updated_at: new Date().toISOString()
       };
 
       // Create receipt record
@@ -122,11 +206,8 @@ export const warehouseService = {
 
       if (error) throw error;
 
-      // Auto-populate address book if shipper/consignee don't exist
-      await this.updateAddressBookFromReceipt(receipt, receiptData);
-
       // Upload files if provided
-      if (files.length > 0) {
+      if (files && files.length > 0) {
         await this.uploadFiles(files, receipt.id);
       }
 
@@ -137,7 +218,115 @@ export const warehouseService = {
     }
   },
 
-  // Upload files to Supabase Storage
+  // Update receipt status
+  async updateStatus(receiptId, status, notes = '') {
+    const { data, error } = await supabase
+      .from('warehouse_receipts')
+      .update({ 
+        status,
+        notes: notes || undefined,
+        updated_at: new Date().toISOString()
+      })
+      .eq('id', receiptId)
+      .select()
+      .single();
+
+    if (error) throw error;
+    return data;
+  },
+
+  // Address book integration
+  async getAddressBook(userId, type = 'all') {
+    let query = supabase
+      .from('address_book')
+      .select('*')
+      .eq('user_id', userId)
+      .eq('is_active', true)
+      .order('company_name');
+
+    if (type !== 'all') {
+      query = query.eq('business_type', type);
+    }
+
+    const { data, error } = await query;
+    if (error) {
+      console.warn('Address book not available, using empty array');
+      return [];
+    }
+    return data || [];
+  },
+
+  // Create address book entry
+  async createAddressBookEntry(addressData) {
+    const { data, error } = await supabase
+      .from('address_book')
+      .insert([addressData])
+      .select()
+      .single();
+
+    if (error) throw error;
+    return data;
+  },
+
+  // Warehouse locations
+  async getWarehouseLocations() {
+    const { data, error } = await supabase
+      .from('warehouse_locations')
+      .select('*')
+      .eq('is_active', true)
+      .order('location_name');
+
+    if (error) {
+      console.warn('Warehouse locations not available, using default');
+      return [
+        { id: 1, location_name: 'JFK Airport', code: 'JFK', is_active: true },
+        { id: 2, location_name: 'MIA Airport', code: 'MIA', is_active: true },
+        { id: 3, location_name: 'LAX Airport', code: 'LAX', is_active: true }
+      ];
+    }
+    return data || [];
+  },
+
+  // Consol week plans
+  async getConsolWeekPlans(userId) {
+    const { data, error } = await supabase
+      .from('consol_week_plans')
+      .select('*')
+      .eq('created_by', userId)
+      .order('year', { ascending: false })
+      .order('week_number', { ascending: false });
+
+    if (error) {
+      console.warn('Consol week plans not available');
+      return [];
+    }
+    return data || [];
+  },
+
+  async createConsolWeekPlan(planData) {
+    const { data, error } = await supabase
+      .from('consol_week_plans')
+      .insert([planData])
+      .select()
+      .single();
+
+    if (error) throw error;
+    return data;
+  },
+
+  async addToConsolPlan(receiptId, consolPlanId) {
+    const { data, error } = await supabase
+      .from('warehouse_receipts')
+      .update({ consol_week_plan_id: consolPlanId })
+      .eq('id', receiptId)
+      .select()
+      .single();
+
+    if (error) throw error;
+    return data;
+  },
+
+  // File upload functionality
   async uploadFiles(files, receiptId) {
     const uploadPromises = Array.from(files).map(async (file) => {
       const fileExt = file.name.split('.').pop();
@@ -181,249 +370,66 @@ export const warehouseService = {
     return Promise.all(uploadPromises);
   },
 
-  // Get dashboard analytics using new function
-  async getDashboardStats(userId) {
-    try {
-      const { data, error } = await supabase
-        .rpc('get_warehouse_analytics', { user_uuid: userId });
-
-      if (error) {
-        // If analytics function doesn't exist, calculate basic stats manually
-        console.warn('Analytics function not found, using fallback calculation');
-        return await this.getFallbackStats(userId);
-      }
-      return data;
-    } catch (error) {
-      console.warn('Analytics function failed, using fallback calculation');
-      return await this.getFallbackStats(userId);
-    }
-  },
-
-  // Fallback stats calculation
-  async getFallbackStats(userId) {
-    try {
-      const { data: receipts, error } = await supabase
+  // Search functionality
+  async searchReceipts(userId, searchTerm) {
+    const { data, error } = await supabase
+      .from('warehouse_receipt_summary_enhanced')
+      .select('*')
+      .eq('user_id', userId)
+      .or(`receipt_number.ilike.%${searchTerm}%,tracking_number.ilike.%${searchTerm}%,shipper_name.ilike.%${searchTerm}%,consignee_name.ilike.%${searchTerm}%,carrier_name.ilike.%${searchTerm}%,pro_number.ilike.%${searchTerm}%`)
+      .order('received_date', { ascending: false });
+    
+    if (error) {
+      // Fallback to base table search
+      const { data: fallbackData, error: fallbackError } = await supabase
         .from('warehouse_receipts')
         .select('*')
-        .eq('user_id', userId);
-
-      if (error) throw error;
-
-      const totalReceipts = receipts?.length || 0;
-      const activeReceipts = receipts?.filter(r => r.status !== 'Shipped').length || 0;
-      const readyForRelease = receipts?.filter(r => r.status === 'Release by Air' || r.status === 'Release by Ocean').length || 0;
-      const totalPieces = receipts?.reduce((sum, r) => sum + (r.total_pieces || 0), 0) || 0;
-      const totalWeight = receipts?.reduce((sum, r) => sum + (r.total_weight_lb || 0), 0) || 0;
-      const totalVolume = receipts?.reduce((sum, r) => sum + (r.total_volume_cbf || 0), 0) || 0;
-
-      return {
-        total_receipts: totalReceipts,
-        active_receipts: activeReceipts,
-        ready_for_release: readyForRelease,
-        total_pieces: totalPieces,
-        total_weight: totalWeight,
-        total_volume: totalVolume
-      };
-    } catch (error) {
-      console.error('Fallback stats calculation failed:', error);
-      return {
-        total_receipts: 0,
-        active_receipts: 0,
-        ready_for_release: 0,
-        total_pieces: 0,
-        total_weight: 0,
-        total_volume: 0
-      };
-    }
-  },
-
-  // Update receipt status
-  async updateStatus(receiptId, status, notes = '') {
-    const { data, error } = await supabase
-      .from('warehouse_receipts')
-      .update({ 
-        status,
-        notes: notes || undefined,
-        updated_at: new Date().toISOString()
-      })
-      .eq('id', receiptId)
-      .select()
-      .single();
-
-    if (error) throw error;
-    return data;
-  },
-
-  // Link receipt to booking
-  async linkToBooking(receiptId, bookingId, bookingType = 'lcl_booking') {
-    const { data, error } = await supabase
-      .from('warehouse_receipt_bookings')
-      .insert([{
-        warehouse_receipt_id: receiptId,
-        booking_id: bookingId,
-        booking_type: bookingType,
-        linked_by: (await supabase.auth.getUser()).data.user?.id
-      }])
-      .select()
-      .single();
-
-    if (error) throw error;
-    return data;
-  },
-
-  // Search receipts with fallback
-  async searchReceipts(userId, searchTerm) {
-    try {
-      const { data, error } = await supabase
-        .from('warehouse_receipt_summary')
-        .select('*')
         .eq('user_id', userId)
-        .or(`receipt_number.ilike.%${searchTerm}%,wr_number.ilike.%${searchTerm}%,tracking_number.ilike.%${searchTerm}%,shipper_name.ilike.%${searchTerm}%,carrier_name.ilike.%${searchTerm}%`)
+        .or(`wr_number.ilike.%${searchTerm}%,tracking_number.ilike.%${searchTerm}%,shipper_name.ilike.%${searchTerm}%,consignee_name.ilike.%${searchTerm}%,carrier_name.ilike.%${searchTerm}%`)
         .order('received_date', { ascending: false });
       
-      if (error) {
-        // Fallback to base table
-        const { data: fallbackData, error: fallbackError } = await supabase
-          .from('warehouse_receipts')
-          .select('*')
-          .eq('user_id', userId)
-          .or(`wr_number.ilike.%${searchTerm}%,tracking_number.ilike.%${searchTerm}%,shipper_name.ilike.%${searchTerm}%,carrier_name.ilike.%${searchTerm}%`)
-          .order('received_date', { ascending: false });
-        
-        if (fallbackError) throw fallbackError;
-        return fallbackData || [];
-      }
-      return data || [];
-    } catch (error) {
-      console.error('Search receipts failed:', error);
-      return [];
+      if (fallbackError) throw fallbackError;
+      return fallbackData || [];
     }
+    return data || [];
   },
 
-  // Get receipts by status with fallback
+  // Get receipts by status (compatible with existing code)
   async getReceiptsByStatus(userId, status) {
-    try {
-      const { data, error } = await supabase
-        .from('warehouse_receipt_summary')
-        .select('*')
-        .eq('user_id', userId)
-        .eq('status', status)
-        .order('received_date', { ascending: false });
-      
-      if (error) {
-        // Fallback to base table
-        const { data: fallbackData, error: fallbackError } = await supabase
-          .from('warehouse_receipts')
-          .select('*')
-          .eq('user_id', userId)
-          .eq('status', status)
-          .order('received_date', { ascending: false });
-        
-        if (fallbackError) throw fallbackError;
-        return fallbackData || [];
-      }
-      return data || [];
-    } catch (error) {
-      console.error('Get receipts by status failed:', error);
-      return [];
-    }
+    return await this.getReceipts(userId, 50, null, status);
   },
 
-  // Get address book entries for shipper/consignee dropdowns
-  async getAddressBook(userId, type = null) {
-    try {
-      let query = supabase
-        .from('address_book')
-        .select('*')
-        .eq('user_id', userId);
-      
-      if (type) {
-        query = query.eq('type', type); // 'shipper' or 'consignee'
-      }
-      
-      const { data, error } = await query.order('company_name', { ascending: true });
-      
-      if (error) throw error;
-      return data || [];
-    } catch (error) {
-      console.error('Get address book failed:', error);
-      return [];
-    }
+  // Get receipt by ID (compatible with existing code)
+  async getReceiptById(receiptId, userId) {
+    const { data: receipt, error } = await supabase
+      .from('warehouse_receipts')
+      .select('*')
+      .eq('id', receiptId)
+      .eq('user_id', userId)
+      .single();
+
+    if (error) throw error;
+    return receipt;
   },
 
-  // Get specific address book entry
-  async getAddressBookEntry(entryId) {
-    try {
-      const { data, error } = await supabase
-        .from('address_book')
-        .select('*')
-        .eq('id', entryId)
-        .single();
-      
-      if (error) throw error;
-      return data;
-    } catch (error) {
-      console.error('Get address book entry failed:', error);
-      return null;
-    }
+  // Utility functions
+  formatStatus(status) {
+    const statusMap = {
+      'received_on_hand': 'Received On Hand',
+      'released_by_air': 'Released by Air',
+      'released_by_ocean': 'Released by Ocean',
+      'shipped': 'Shipped'
+    };
+    return statusMap[status] || status;
   },
 
-  // Auto-populate address book from receipt data
-  async updateAddressBookFromReceipt(receipt, receiptData) {
-    try {
-      const userId = receiptData.user_id;
-      
-      // If shipper_id or consignee_id are not set, create address book entries
-      if (!receiptData.shipper_id && receiptData.shipper_name) {
-        const shipperEntry = {
-          user_id: userId,
-          company_name: receiptData.shipper_name,
-          address_line_1: receiptData.shipper_address || '',
-          type: 'shipper',
-          created_at: new Date().toISOString()
-        };
-        
-        const { data: newShipper } = await supabase
-          .from('address_book')
-          .insert([shipperEntry])
-          .select()
-          .single();
-          
-        if (newShipper) {
-          // Update the receipt with the new shipper_id
-          await supabase
-            .from('warehouse_receipts')
-            .update({ shipper_id: newShipper.id })
-            .eq('id', receipt.id);
-        }
-      }
-
-      if (!receiptData.consignee_id && receiptData.consignee_name) {
-        const consigneeEntry = {
-          user_id: userId,
-          company_name: receiptData.consignee_name,
-          address_line_1: receiptData.consignee_address || '',
-          type: 'consignee',
-          created_at: new Date().toISOString()
-        };
-        
-        const { data: newConsignee } = await supabase
-          .from('address_book')
-          .insert([consigneeEntry])
-          .select()
-          .single();
-          
-        if (newConsignee) {
-          // Update the receipt with the new consignee_id
-          await supabase
-            .from('warehouse_receipts')
-            .update({ consignee_id: newConsignee.id })
-            .eq('id', receipt.id);
-        }
-      }
-    } catch (error) {
-      console.warn('Could not auto-populate address book:', error);
-      // Non-critical error, continue with receipt creation
-    }
+  getStatusColor(status) {
+    const colorMap = {
+      'received_on_hand': 'bg-blue-100 text-blue-800',
+      'released_by_air': 'bg-yellow-100 text-yellow-800',
+      'released_by_ocean': 'bg-purple-100 text-purple-800',
+      'shipped': 'bg-green-100 text-green-800'
+    };
+    return colorMap[status] || 'bg-gray-100 text-gray-800';
   }
 };
