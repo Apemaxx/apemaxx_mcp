@@ -7,6 +7,7 @@ import {
   Users, Archive, Settings
 } from 'lucide-react';
 import { warehouseService } from '../lib/warehouseService';
+import ExportButton from './ExportButton';
 
 interface ProfessionalWarehouseManagerProps {
   userId: string;
@@ -137,6 +138,11 @@ const ProfessionalWarehouseManager: React.FC<ProfessionalWarehouseManagerProps> 
             </div>
             
             <div className="flex items-center space-x-4">
+              <ExportButton 
+                userId={userId} 
+                variant="receipts"
+                size="md" 
+              />
               <button
                 onClick={() => setShowCreateForm(true)}
                 className="flex items-center space-x-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700"

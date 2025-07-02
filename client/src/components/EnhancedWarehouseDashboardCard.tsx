@@ -5,6 +5,7 @@ import {
   Building, Archive, TrendingUp 
 } from 'lucide-react';
 import { warehouseService } from '../lib/warehouseService';
+import ExportButton from './ExportButton';
 
 interface EnhancedWarehouseDashboardCardProps {
   userId: string;
@@ -328,13 +329,20 @@ const EnhancedWarehouseDashboardCard: React.FC<EnhancedWarehouseDashboardCardPro
                  (stats.by_status?.released_by_ocean || 0)} in process
               </span>
             </div>
-            <button
-              onClick={() => onNavigateToFull && onNavigateToFull('manage')}
-              className="text-blue-600 hover:text-blue-800 font-medium flex items-center"
-            >
-              Manage All
-              <ArrowRight className="w-3 h-3 ml-1" />
-            </button>
+            <div className="flex items-center gap-2">
+              <ExportButton 
+                userId={userId} 
+                variant="performance" 
+                size="sm"
+              />
+              <button
+                onClick={() => onNavigateToFull && onNavigateToFull('manage')}
+                className="text-blue-600 hover:text-blue-800 font-medium flex items-center"
+              >
+                Manage All
+                <ArrowRight className="w-3 h-3 ml-1" />
+              </button>
+            </div>
           </div>
         </div>
       )}
