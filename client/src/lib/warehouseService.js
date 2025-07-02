@@ -90,8 +90,8 @@ export const warehouseService = {
   // Create new warehouse receipt
   async createReceipt(receiptData, files = []) {
     try {
-      // Generate unique receipt number
-      const receiptNumber = `WR${Date.now()}`;
+      // Use WR number from PDF data or generate if not provided
+      const receiptNumber = receiptData.wr_number || `WR${Date.now()}`;
       
       // Prepare data for insertion (match your table structure)
       const insertData = {
