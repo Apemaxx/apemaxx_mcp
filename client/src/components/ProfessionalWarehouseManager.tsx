@@ -254,6 +254,76 @@ const ProfessionalWarehouseManager: React.FC<ProfessionalWarehouseManagerProps> 
     </div>
   );
 
+  // Enhanced WR Line Card Component
+  const WarehouseReceiptLineCard: React.FC<{ 
+    receipt: WarehouseReceipt; 
+    onSelect: (id: string) => void; 
+    onViewDetail: () => void; 
+  }> = ({ receipt, onSelect, onViewDetail }) => (
+    <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6 hover:shadow-md transition-shadow">
+      {/* Header with WR# and Status */}
+      <div className="flex justify-between items-start mb-4">
+        <div>
+          <h3 className="text-xl font-bold text-blue-600">WR#{receipt.receipt_number}</h3>
+          <div className="flex items-center space-x-4 mt-1 text-sm text-gray-600">
+            <span>📅 {new Date(receipt.received_date).toLocaleDateString()}</span>
+            <span>📦 {receipt.tracking_number || 'N/A'}</span>
+          </div>
+        </div>
+        <div className={`px-3 py-1 rounded-full text-xs font-medium ${warehouseService.getStatusColor(receipt.status)}`}>
+          {warehouseService.getStatusIcon(receipt.status)} {warehouseService.getStatusDisplay(receipt.status)}
+        </div>
+      </div>
+
+      {/* Shipper/Consignee Info */}
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
+        <div className="border-l-4 border-blue-400 pl-3">
+          <div className="text-xs text-gray-500 uppercase font-medium">Shipper</div>
+          <div className="text-sm font-medium text-gray-900">{receipt.shipper_name || 'N/A'}</div>
+        </div>
+        <div className="border-l-4 border-green-400 pl-3">
+          <div className="text-xs text-gray-500 uppercase font-medium">Consignee</div>
+          <div className="text-sm font-medium text-gray-900">{receipt.consignee_name || 'N/A'}</div>
+        </div>
+      </div>
+
+      {/* Cargo Details */}
+      <div className="grid grid-cols-3 gap-4 pt-4 border-t border-gray-100 mb-4">
+        <div className="text-center">
+          <div className="text-lg font-bold text-blue-600">{receipt.total_pieces || 0}</div>
+          <div className="text-xs text-gray-600">Pieces</div>
+        </div>
+        <div className="text-center">
+          <div className="text-sm font-bold text-green-600">
+            {warehouseService.formatWeightDetailed(receipt.total_weight_lb).lbs} lbs
+          </div>
+          <div className="text-xs text-gray-600">
+            {warehouseService.formatWeightDetailed(receipt.total_weight_lb).kg} kg
+          </div>
+        </div>
+        <div className="text-center">
+          <div className="text-sm font-bold text-purple-600">
+            {warehouseService.formatVolumeDetailed(receipt.total_volume_ft3).ft3} ft³
+          </div>
+          <div className="text-xs text-gray-600">
+            {warehouseService.formatVolumeDetailed(receipt.total_volume_ft3).m3} m³
+          </div>
+        </div>
+      </div>
+
+      {/* Action Button */}
+      <button
+        onClick={() => {
+          onSelect(receipt.id);
+          onViewDetail();
+        }}
+        className="w-full px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors text-sm font-medium"
+      >
+        View Details
+      </button>
+    </div>
+  );
+
   const ReceiptCard = ({ receipt }: { receipt: WarehouseReceipt }) => (
     <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6 hover:shadow-md transition-shadow cursor-pointer"
          onClick={() => {
@@ -261,14 +331,17 @@ const ProfessionalWarehouseManager: React.FC<ProfessionalWarehouseManagerProps> 
            setActiveView('detail');
          }}>
       <div className="flex justify-between items-start mb-4">
-        <div>
-          <h3 className="text-lg font-bold text-gray-900">{receipt.receipt_number}</h3>
-          <p className="text-sm text-gray-600">
-            {new Date(receipt.received_date).toLocaleDateString()}
-          </p>
-        </div>
-        <div className={`px-3 py-1 rounded-full text-sm font-medium ${warehouseService.getStatusColor(receipt.status)}`}>
-          {warehouseService.getStatusIcon(receipt.status)} {warehouseService.getStatusDisplay(receipt.status)}
+        <div className="flex-1">
+          <div className="flex items-center space-x-3 mb-2">
+            <h3 className="text-xl font-bold text-blue-600">WR#{receipt.receipt_number}</h3>
+            <div className={`px-3 py-1 rounded-full text-xs font-medium ${warehouseService.getStatusColor(receipt.status)}`}>
+              {warehouseService.getStatusIcon(receipt.status)} {warehouseService.getStatusDisplay(receipt.status)}
+            </div>
+          </div>
+          <div className="flex items-center space-x-4 text-sm text-gray-600">
+            <span>📅 {new Date(receipt.received_date).toLocaleDateString()}</span>
+            <span>📦 Tracking: {receipt.tracking_number || 'N/A'}</span>
+          </div>
         </div>
       </div>
       
@@ -282,8 +355,8 @@ const ProfessionalWarehouseManager: React.FC<ProfessionalWarehouseManagerProps> 
           <span className="text-sm font-medium text-gray-900 truncate ml-2">{receipt.consignee_name || 'N/A'}</span>
         </div>
         <div className="flex justify-between">
-          <span className="text-sm text-gray-600">Tracking:</span>
-          <span className="text-sm font-mono text-gray-900">{receipt.tracking_number || 'N/A'}</span>
+          <span className="text-sm text-gray-600">Location:</span>
+          <span className="text-sm font-medium text-gray-900">{receipt.warehouse_location_id || 'N/A'}</span>
         </div>
       </div>
       
@@ -804,7 +877,7 @@ const ProfessionalWarehouseManager: React.FC<ProfessionalWarehouseManagerProps> 
           <div className="flex justify-between items-center">
             <div>
               <h1 className="text-2xl font-bold text-gray-900 flex items-center">
-                🏭 Professional Warehouse Management
+                🏭 Warehouse Inventory Management
               </h1>
               <p className="text-gray-600">Comprehensive inventory tracking and management system</p>
             </div>
@@ -867,47 +940,43 @@ const ProfessionalWarehouseManager: React.FC<ProfessionalWarehouseManagerProps> 
             )}
 
             {viewMode === 'list' && (
-              <div className="bg-white rounded-lg shadow-sm border border-gray-200 overflow-hidden">
-                <div className="overflow-x-auto">
-                  <table className="min-w-full divide-y divide-gray-200">
-                    <thead className="bg-gray-50">
-                      <tr>
-                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Receipt #</th>
-                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Date</th>
-                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Shipper</th>
-                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Status</th>
-                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Pieces</th>
-                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Weight</th>
-                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Location</th>
-                      </tr>
-                    </thead>
-                    <tbody className="bg-white divide-y divide-gray-200">
-                      {filteredReceipts.map(receipt => (
-                        <tr 
-                          key={receipt.id} 
-                          className="hover:bg-gray-50 cursor-pointer"
-                          onClick={() => {
-                            setSelectedReceipt(receipt.id);
-                            setActiveView('detail');
-                          }}
-                        >
-                          <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">{receipt.receipt_number}</td>
-                          <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{new Date(receipt.received_date).toLocaleDateString()}</td>
-                          <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">{receipt.shipper_name}</td>
-                          <td className="px-6 py-4 whitespace-nowrap">
-                            <div className={`px-2 py-1 rounded-full text-xs font-medium ${warehouseService.getStatusColor(receipt.status)}`}>
-                              {warehouseService.getStatusIcon(receipt.status)} {warehouseService.getStatusDisplay(receipt.status)}
-                            </div>
-                          </td>
-                          <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">{receipt.total_pieces}</td>
-                          <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">{warehouseService.formatWeight(receipt.total_weight_lb)}</td>
-                          <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">{receipt.warehouse_location_code}</td>
-                        </tr>
-                      ))}
-                    </tbody>
-                  </table>
+              <>
+                {/* Summary Totals Card */}
+                <div className="bg-gradient-to-r from-blue-50 to-indigo-50 rounded-lg border border-blue-200 p-6 mb-6">
+                  <h3 className="text-lg font-semibold text-gray-900 mb-4">📊 Summary Totals</h3>
+                  <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+                    <div className="text-center">
+                      <div className="text-2xl font-bold text-blue-600">
+                        {warehouseService.calculateTotals(filteredReceipts).pieces}
+                      </div>
+                      <div className="text-sm text-gray-600">Total Pieces</div>
+                    </div>
+                    <div className="text-center">
+                      <div className="text-lg font-bold text-green-600">
+                        {warehouseService.formatWeightDetailed(warehouseService.calculateTotals(filteredReceipts).weightLb).display}
+                      </div>
+                      <div className="text-sm text-gray-600">Total Weight</div>
+                    </div>
+                    <div className="text-center">
+                      <div className="text-lg font-bold text-purple-600">
+                        {warehouseService.formatVolumeDetailed(warehouseService.calculateTotals(filteredReceipts).volumeFt3).display}
+                      </div>
+                      <div className="text-sm text-gray-600">Total Volume</div>
+                    </div>
+                    <div className="text-center">
+                      <div className="text-2xl font-bold text-orange-600">{filteredReceipts.length}</div>
+                      <div className="text-sm text-gray-600">WR Count</div>
+                    </div>
+                  </div>
                 </div>
-              </div>
+
+                {/* WR Cards Grid */}
+                <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                  {filteredReceipts.map(receipt => (
+                    <WarehouseReceiptLineCard key={receipt.id} receipt={receipt} onSelect={setSelectedReceipt} onViewDetail={() => setActiveView('detail')} />
+                  ))}
+                </div>
+              </>
             )}
           </>
         )}
@@ -922,7 +991,8 @@ const ProfessionalWarehouseManager: React.FC<ProfessionalWarehouseManagerProps> 
               <table className="min-w-full divide-y divide-gray-200">
                 <thead className="bg-gray-50">
                   <tr>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Receipt #</th>
+                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">WR Number</th>
+                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Tracking Number</th>
                     <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Date</th>
                     <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Shipper</th>
                     <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Consignee</th>
@@ -943,7 +1013,12 @@ const ProfessionalWarehouseManager: React.FC<ProfessionalWarehouseManagerProps> 
                         setActiveView('detail');
                       }}
                     >
-                      <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-blue-600">{receipt.receipt_number}</td>
+                      <td className="px-6 py-4 whitespace-nowrap">
+                        <div className="text-sm font-bold text-blue-600">WR#{receipt.receipt_number}</div>
+                      </td>
+                      <td className="px-6 py-4 whitespace-nowrap">
+                        <div className="text-sm font-mono text-gray-900">{receipt.tracking_number || 'N/A'}</div>
+                      </td>
                       <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{new Date(receipt.received_date).toLocaleDateString()}</td>
                       <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">{receipt.shipper_name}</td>
                       <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">{receipt.consignee_name}</td>

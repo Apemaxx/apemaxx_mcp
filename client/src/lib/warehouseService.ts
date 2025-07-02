@@ -594,17 +594,55 @@ export const warehouseService = {
 
   formatVolume(volumeFt3) {
     if (!volumeFt3) return '0.00 ft³';
-    return `${parseFloat(volumeFt3).toFixed(2)} ft³`;
+    const ft3 = parseFloat(volumeFt3);
+    const m3 = ft3 * 0.0283168; // ft³ to m³ conversion formula
+    return `${ft3.toFixed(2)} ft³ (${m3.toFixed(3)} m³)`;
   },
 
   formatWeight(weightLb) {
     if (!weightLb) return '0.00 lbs';
-    return `${parseFloat(weightLb).toFixed(2)} lbs`;
+    const lbs = parseFloat(weightLb);
+    const kg = lbs * 0.453592; // lbs to kg conversion
+    return `${lbs.toFixed(2)} lbs (${kg.toFixed(2)} kg)`;
   },
 
   formatVLB(volumeVlb) {
     if (!volumeVlb) return '0.00 VLB';
     return `${parseFloat(volumeVlb).toFixed(2)} VLB`;
+  },
+
+  // Enhanced volume formatting for detailed views
+  formatVolumeDetailed(volumeFt3) {
+    if (!volumeFt3) return { ft3: '0.00', m3: '0.000', display: '0.00 ft³' };
+    const ft3 = parseFloat(volumeFt3);
+    const m3 = ft3 * 0.0283168;
+    return {
+      ft3: ft3.toFixed(2),
+      m3: m3.toFixed(3),
+      display: `${ft3.toFixed(2)} ft³ / ${m3.toFixed(3)} m³`
+    };
+  },
+
+  // Enhanced weight formatting for detailed views
+  formatWeightDetailed(weightLb) {
+    if (!weightLb) return { lbs: '0.00', kg: '0.00', display: '0.00 lbs' };
+    const lbs = parseFloat(weightLb);
+    const kg = lbs * 0.453592;
+    return {
+      lbs: lbs.toFixed(2),
+      kg: kg.toFixed(2),
+      display: `${lbs.toFixed(2)} lbs / ${kg.toFixed(2)} kg`
+    };
+  },
+
+  // Calculate totals with proper summation
+  calculateTotals(receipts) {
+    return receipts.reduce((totals, receipt) => {
+      totals.pieces += parseInt(receipt.total_pieces || 0);
+      totals.weightLb += parseFloat(receipt.total_weight_lb || 0);
+      totals.volumeFt3 += parseFloat(receipt.total_volume_ft3 || 0);
+      return totals;
+    }, { pieces: 0, weightLb: 0, volumeFt3: 0 });
   },
 
   // ==================== LEGACY COMPATIBILITY ====================
