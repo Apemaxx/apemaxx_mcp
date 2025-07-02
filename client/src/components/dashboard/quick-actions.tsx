@@ -3,13 +3,21 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { PlusCircle, FileUp, Search, DollarSign } from 'lucide-react';
 import { NewBookingModal } from '@/components/modals/new-booking-modal';
+import { PDFImportModal } from '@/components/PDFImportModal';
 
 export function QuickActions() {
   const [showNewBookingModal, setShowNewBookingModal] = useState(false);
+  const [showPDFImportModal, setShowPDFImportModal] = useState(false);
 
   const handleImportWR = () => {
-    // TODO: Implement warehouse receipt import
-    console.log('Import WR clicked');
+    setShowPDFImportModal(true);
+  };
+
+  const handleImportComplete = (data: any) => {
+    // Refresh warehouse data or navigate to warehouse section
+    console.log('Warehouse receipt imported successfully:', data);
+    // You could trigger a page refresh or emit an event here
+    window.location.reload();
   };
 
   const handleTrackShipment = () => {
@@ -71,6 +79,12 @@ export function QuickActions() {
       <NewBookingModal 
         open={showNewBookingModal} 
         onOpenChange={setShowNewBookingModal} 
+      />
+
+      <PDFImportModal
+        open={showPDFImportModal}
+        onOpenChange={setShowPDFImportModal}
+        onImportComplete={handleImportComplete}
       />
     </>
   );

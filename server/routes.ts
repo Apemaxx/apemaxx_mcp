@@ -6,8 +6,30 @@ import { storage } from "./storage";
 import { supabase } from "./supabase";
 import { insertUserSchema, insertBookingSchema, insertChatMessageSchema, insertProfileSchema } from "@shared/schema";
 import { z } from "zod";
+import multer from "multer";
+import Anthropic from '@anthropic-ai/sdk';
 
 const JWT_SECRET = process.env.JWT_SECRET || "fallback-secret-key";
+
+// Initialize Anthropic client
+const anthropic = new Anthropic({
+  apiKey: process.env.ANTHROPIC_API_KEY,
+});
+
+// Configure multer for file uploads
+const upload = multer({
+  storage: multer.memoryStorage(),
+  limits: {
+    fileSize: 10 * 1024 * 1024, // 10MB limit
+  },
+  fileFilter: (_req, file, cb) => {
+    if (file.mimetype === 'application/pdf') {
+      cb(null, true);
+    } else {
+      cb(null, false);
+    }
+  }
+});
 
 // Auth middleware
 const authenticateToken = async (req: any, res: any, next: any) => {
@@ -428,6 +450,150 @@ export async function registerRoutes(app: Express): Promise<Server> {
     } catch (error) {
       console.error("Warehouse stats error:", error);
       res.status(500).json({ message: "Failed to fetch warehouse statistics" });
+    }
+  });
+
+  // PDF Processing Endpoint
+  app.post("/api/warehouse/process-pdf", authenticateToken, upload.single('pdf'), async (req: any, res) => {
+    try {
+      if (!req.file) {
+        return res.status(400).json({ message: "No PDF file uploaded" });
+      }
+
+      if (!process.env.ANTHROPIC_API_KEY) {
+        return res.status(500).json({ 
+          message: "AI processing unavailable. Please configure ANTHROPIC_API_KEY." 
+        });
+      }
+
+      console.log("📄 Processing PDF file:", req.file.originalname);
+
+      // Extract text from PDF
+      const pdfBuffer = req.file.buffer;
+      const pdfParse = await import('pdf-parse');
+      const pdfData = await pdfParse.default(pdfBuffer);
+      const pdfText = pdfData.text;
+
+      console.log("📝 Extracted text length:", pdfText.length);
+
+      // Prepare AI prompt for structured data extraction
+      const extractionPrompt = `
+You are a warehouse receipt data extraction expert. Extract structured data from this warehouse receipt PDF text.
+
+PDF TEXT:
+${pdfText}
+
+Please extract the following information and return it as valid JSON:
+
+{
+  "wr_number": "warehouse receipt number (e.g., WR23303)",
+  "received_date": "YYYY-MM-DD format",
+  "received_by": "person who received the shipment",
+  "shipper_name": "shipper company name",
+  "shipper_address": "full shipper address",
+  "consignee_name": "consignee company name", 
+  "consignee_address": "full consignee address",
+  "carrier_name": "carrier/trucking company name",
+  "driver_name": "driver name",
+  "tracking_number": "tracking/AWB number",
+  "total_pieces": "total number of pieces (integer)",
+  "total_weight_lb": "total weight in pounds (number)",
+  "total_volume_ft3": "total volume in cubic feet (number)",
+  "cargo_description": "description of cargo/goods",
+  "package_type": "type of packaging (boxes, pallets, etc)",
+  "dimensions_length": "length in inches (number)",
+  "dimensions_width": "width in inches (number)", 
+  "dimensions_height": "height in inches (number)",
+  "warehouse_location_code": "warehouse location code",
+  "status": "received_on_hand",
+  "pro_number": "pro number or bill of lading number",
+  "notes": "any additional notes or remarks"
+}
+
+Rules:
+1. Extract only the data present in the PDF text
+2. Use "N/A" for missing fields
+3. Ensure numbers are actual numbers, not strings
+4. Return only valid JSON, no other text
+5. Be precise with company names and addresses
+6. Status should be "received_on_hand" for new receipts
+`;
+
+      // Process with Claude AI
+      const aiResponse = await anthropic.messages.create({
+        model: "claude-sonnet-4-20250514",
+        max_tokens: 2000,
+        messages: [
+          {
+            role: "user",
+            content: extractionPrompt
+          }
+        ]
+      });
+
+      const extractedText = (aiResponse.content[0] as any).text;
+      console.log("🤖 AI Response:", extractedText);
+
+      // Parse the JSON response
+      let extractedData;
+      try {
+        extractedData = JSON.parse(extractedText);
+      } catch (parseError) {
+        console.error("JSON parse error:", parseError);
+        return res.status(500).json({ 
+          message: "Failed to parse AI response. Please try again." 
+        });
+      }
+
+      // Validate required fields
+      if (!extractedData.wr_number || extractedData.wr_number === "N/A") {
+        return res.status(400).json({ 
+          message: "Could not extract WR number from PDF. Please check the document." 
+        });
+      }
+
+      console.log("✅ Data extracted successfully:", extractedData.wr_number);
+
+      res.json({
+        success: true,
+        extractedData: extractedData,
+        pdfInfo: {
+          filename: req.file.originalname,
+          size: req.file.size,
+          textLength: pdfText.length
+        }
+      });
+
+    } catch (error) {
+      console.error("PDF processing error:", error);
+      res.status(500).json({ 
+        message: "Failed to process PDF: " + (error instanceof Error ? error.message : "Unknown error")
+      });
+    }
+  });
+
+  // Create Warehouse Receipt Endpoint
+  app.post("/api/warehouse/receipts", authenticateToken, async (req: any, res) => {
+    try {
+      const receiptData = {
+        ...req.body,
+        user_id: req.user.id,
+        created_at: new Date().toISOString(),
+        updated_at: new Date().toISOString()
+      };
+
+      console.log("📦 Creating warehouse receipt:", receiptData.wr_number || receiptData.receiptNumber);
+
+      const newReceipt = await storage.createWarehouseReceipt(receiptData);
+      
+      console.log("✅ Warehouse receipt created successfully:", (newReceipt as any).wr_number || (newReceipt as any).receiptNumber);
+      
+      res.json(newReceipt);
+    } catch (error) {
+      console.error("Create warehouse receipt error:", error);
+      res.status(500).json({ 
+        message: "Failed to create warehouse receipt: " + (error instanceof Error ? error.message : "Unknown error")
+      });
     }
   });
 

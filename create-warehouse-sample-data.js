@@ -1,4 +1,4 @@
-const { createClient } = require('@supabase/supabase-js');
+import { createClient } from '@supabase/supabase-js';
 
 const supabaseUrl = process.env.DATABASE_URL?.replace('postgresql://', '')?.replace(/:[^:]*@/, '@')?.replace(/@([^:]+):(\d+)\/(.+)/, 'https://$1.supabase.co') || 'https://bqmpupymchanohpfzglw.supabase.co';
 const supabaseKey = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImJxbXB1cHltY2hhbm9ocGZ6Z2x3Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3MTkwNjgzNjQsImV4cCI6MjAzNDY0NDM2NH0.VcGfVGgstaGhk5p-5dmI-qMOOD5PadQ46bJj39cyaXo';

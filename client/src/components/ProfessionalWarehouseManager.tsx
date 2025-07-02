@@ -895,12 +895,6 @@ const ProfessionalWarehouseManager: React.FC<ProfessionalWarehouseManagerProps> 
               >
                 📋 All Receipts
               </button>
-              <button
-                onClick={() => setActiveView('create')}
-                className="px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 font-medium"
-              >
-                ➕ New Receipt
-              </button>
             </div>
           </div>
         </div>
@@ -991,16 +985,15 @@ const ProfessionalWarehouseManager: React.FC<ProfessionalWarehouseManagerProps> 
               <table className="min-w-full divide-y divide-gray-200">
                 <thead className="bg-gray-50">
                   <tr>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">WR Number</th>
+                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">WR Receipt Number</th>
                     <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Tracking Number</th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Date</th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Shipper</th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Consignee</th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Status</th>
+                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Pro Number</th>
                     <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Pieces</th>
                     <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Weight</th>
                     <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Volume</th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Location</th>
+                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Remarks</th>
+                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Shipper</th>
+                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Consignee</th>
                   </tr>
                 </thead>
                 <tbody className="bg-white divide-y divide-gray-200">
@@ -1019,18 +1012,21 @@ const ProfessionalWarehouseManager: React.FC<ProfessionalWarehouseManagerProps> 
                       <td className="px-6 py-4 whitespace-nowrap">
                         <div className="text-sm font-mono text-gray-900">{receipt.tracking_number || 'N/A'}</div>
                       </td>
-                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{new Date(receipt.received_date).toLocaleDateString()}</td>
-                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">{receipt.shipper_name}</td>
-                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">{receipt.consignee_name}</td>
                       <td className="px-6 py-4 whitespace-nowrap">
-                        <div className={`px-2 py-1 rounded-full text-xs font-medium ${warehouseService.getStatusColor(receipt.status)}`}>
-                          {warehouseService.getStatusIcon(receipt.status)} {warehouseService.getStatusDisplay(receipt.status)}
-                        </div>
+                        <div className="text-sm text-gray-900">{receipt.pro_number || 'N/A'}</div>
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">{receipt.total_pieces}</td>
-                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">{warehouseService.formatWeight(receipt.total_weight_lb)}</td>
-                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">{warehouseService.formatVolume(receipt.total_volume_ft3)}</td>
-                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">{receipt.warehouse_location_code}</td>
+                      <td className="px-6 py-4 whitespace-nowrap">
+                        <div className="text-sm text-gray-900">{warehouseService.formatWeightDetailed(receipt.total_weight_lb).lbs} lbs</div>
+                        <div className="text-xs text-gray-500">{warehouseService.formatWeightDetailed(receipt.total_weight_lb).kg} kg</div>
+                      </td>
+                      <td className="px-6 py-4 whitespace-nowrap">
+                        <div className="text-sm text-gray-900">{warehouseService.formatVolumeDetailed(receipt.total_volume_ft3).ft3} ft³</div>
+                        <div className="text-xs text-gray-500">{warehouseService.formatVolumeDetailed(receipt.total_volume_ft3).m3} m³</div>
+                      </td>
+                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">{receipt.notes || 'N/A'}</td>
+                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">{receipt.shipper_name}</td>
+                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">{receipt.consignee_name}</td>
                     </tr>
                   ))}
                 </tbody>
